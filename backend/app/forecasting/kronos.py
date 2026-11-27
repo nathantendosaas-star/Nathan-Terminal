@@ -7,11 +7,10 @@ import time
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
 
 MODEL_ID = os.getenv("KRONOS_MODEL_ID", "NeoQuasar/Kronos-mini")
 TOKENIZER_ID = os.getenv("KRONOS_TOKENIZER_ID", "NeoQuasar/Kronos-Tokenizer-2k")
-MAX_CONTEXT = int(os.getenv("KRONOS_MAX_CONTEXT", "512"))
+MAX_CONTEXT = int(os.getenv("KRONOS_MAX_CONTEXT", "2048"))
 DEFAULT_PRED_LEN = int(os.getenv("KRONOS_PRED_LEN", "24"))
 SOURCE_PATH = Path(os.getenv("KRONOS_SOURCE_PATH", Path(__file__).resolve().parents[2] / "vendor" / "Kronos"))
 
@@ -76,6 +75,8 @@ def forecast_candles(candles: list[dict[str, Any]], interval: str, pred_len: int
         raise ValueError("At least 32 historical candles are required for a Kronos forecast.")
     if pred_len < 1 or pred_len > 48:
         raise ValueError("pred_len must be between 1 and 48.")
+
+    import pandas as pd
 
     predictor = _load_predictor()
     frame = pd.DataFrame(candles)
