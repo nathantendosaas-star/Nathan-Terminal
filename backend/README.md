@@ -11,6 +11,14 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
+## Tests
+
+From the `backend` directory, run the standard-library unit tests with:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
 ## Endpoints
 
 - `GET /health` — API health and configured market-data provider.
