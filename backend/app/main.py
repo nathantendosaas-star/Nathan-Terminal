@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.market_data.binance import get_binance_candles
+from app.market_data.technical import calculate_technical_analysis
 
 app = FastAPI(title="Nathan Terminal API", version="0.2.0", description="Personal market intelligence and decision-support API.")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -41,4 +42,5 @@ async def market_candles(
         "is_live": True,
         "count": len(candles),
         "candles": candles,
+        "technical_analysis": calculate_technical_analysis(candles),
     }
