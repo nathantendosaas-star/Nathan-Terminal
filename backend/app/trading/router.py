@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
@@ -92,6 +92,8 @@ def _validate(conn, plan: TradePlan):
     instrument = _instrument(conn, symbol)
     if instrument is None:
         return {"status": "NEEDS_REVIEW", "reasons": [f"No instrument specification configured for {symbol}. Add verified contract multiplier, quantity step and minimum quantity before sizing or approval."]}
+    if instrument["quote_currency"].upper() != _settings(conn)["account_currency"].upper():
+        return {"status": "NEEDS_REVIEW", "reasons": ["Instrument quote currency differs from account currency. Configure matching currencies; FX conversion is not implemented."]}
     if plan.market_price is None or plan.market_data_timestamp is None:
         return {"status": "NEEDS_REVIEW", "reasons": ["A current market price and its timestamp are required for freshness validation."]}
     timestamp = plan.market_data_timestamp
