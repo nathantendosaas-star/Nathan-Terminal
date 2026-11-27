@@ -25,7 +25,7 @@ export type TechnicalAnalysis = {
 export type CandleResponse = {
   symbol: string;
   interval: string;
-  source: "binance_spot";
+  source: "binance_spot" | "twelve_data";
   is_live: boolean;
   count: number;
   candles: Candle[];
