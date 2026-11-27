@@ -9,9 +9,11 @@ from app.market_data.binance import get_binance_candles
 from app.market_data.twelve_data import get_twelve_data_candles
 from app.market_data.technical import calculate_technical_analysis
 from app.forecasting.router import router as forecasting_router
+from app.analysis.router import router as analysis_router
 
 app = FastAPI(title="Nathan Terminal API", version="0.3.0", description="Personal market intelligence and decision-support API.")
 app.include_router(forecasting_router)
+app.include_router(analysis_router)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 
@@ -34,7 +36,8 @@ async def overview() -> dict[str, str]:
         "mode": "research_only",
         "market_data": "binance_and_twelve_data",
         "forecast_model": "kronos_mini_optional",
-        "message": "Binance and Twelve Data candles are available; Kronos-mini forecasts are exposed through /api/v1/forecasts when the model runtime is installed.",
+        "ai_analyst": "gemini_optional",
+        "message": "Binance and Twelve Data candles are available; Kronos-mini forecasts and Gemini AI market analysis are optional integrations.",
     }
 
 
