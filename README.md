@@ -61,7 +61,7 @@ Supported intervals include `1m`, `5m`, `15m`, `1h`, `4h`, `1d`, and other Binan
 
 The Twelve Data adapter normalizes returned candles to chronological UTC OHLCV records. Its supported intervals are 1m, 5m, 15m, 30m, 45m, 1h, 2h, 4h, 1d, 1w, and 1M. API-key absence, provider errors, and rate limits are reported explicitly; no fallback prices are fabricated.
 
-The chart supports BTC/USDT, ETH/USDT, and SOL/USDT through Binance, plus AAPL, NVDA, and EUR/USD through Twelve Data. Choose a market and interval in the chart controls. It renders OHLC candles, volume bars, and available confirmed support/resistance levels from the technical-analysis response. Data refreshes through REST polling every 60 seconds; this is not a WebSocket stream. If a provider request fails, the chart displays the error instead of inventing fallback prices. Portfolio metrics and watchlist values remain illustrative placeholders.
+The chart supports BTC/USDT, ETH/USDT, and SOL/USDT through Binance, plus AAPL, NVDA, and EUR/USD through Twelve Data. Choose a market and interval in the chart controls. It renders OHLC candles, volume bars, EMA 20/50 overlays, and available confirmed support/resistance levels from the technical-analysis response. Data refreshes through REST polling every 60 seconds; this is not a WebSocket stream. If a provider request fails, the chart displays the error instead of inventing fallback prices. Portfolio metrics and watchlist values remain illustrative placeholders.
 
 ## Architecture
 
