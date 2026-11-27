@@ -43,10 +43,6 @@ def calculate_plan(plan: dict[str, Any], settings: dict[str, Any], instrument: d
         reasons.append(f"Risk/reward {rr:.2f}:1 is below the configured minimum of {settings['minimum_risk_reward']:.2f}:1.")
     if open_positions >= int(settings["maximum_simultaneous_positions"]):
         reasons.append("Maximum simultaneous open positions has been reached.")
-    projected_daily_loss = max(0.0, -daily_realized_pnl) + open_risk + risk_budget
-    daily_limit = equity * float(settings["maximum_daily_loss_pct"]) / 100
-    if projected_daily_loss > daily_limit + 1e-9:
-        reasons.append(f"Projected daily loss exposure {projected_daily_loss:.2f} exceeds the configured daily limit {daily_limit:.2f}.")
     if suggested_qty < minimum or suggested_qty <= 0:
         review.append("Risk budget produces a quantity below the instrument minimum; no valid size can be suggested.")
     if qty is None:
@@ -63,6 +59,11 @@ def calculate_plan(plan: dict[str, Any], settings: dict[str, Any], instrument: d
             actual_risk = qty * distance_risk
             if actual_risk > risk_budget + 1e-8:
                 reasons.append(f"Planned quantity risks {actual_risk:.2f}, above the per-trade budget {risk_budget:.2f}.")
+    new_trade_risk = risk_budget if qty is None or not math.isfinite(float(qty)) or float(qty) <= 0 else float(qty) * distance_risk
+    projected_daily_loss = max(0.0, -daily_realized_pnl) + open_risk + new_trade_risk
+    daily_limit = equity * float(settings["maximum_daily_loss_pct"]) / 100
+    if projected_daily_loss > daily_limit + 1e-9:
+        reasons.append(f"Projected daily loss exposure {projected_daily_loss:.2f} exceeds the configured daily limit {daily_limit:.2f}.")
     if reasons:
         status = "REJECTED"
     elif review:
