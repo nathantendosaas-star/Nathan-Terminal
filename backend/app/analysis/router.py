@@ -61,7 +61,7 @@ async def analyze_market(request: AnalysisRequest) -> dict:
     payload = {"contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.25, "maxOutputTokens": 1800}}
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(45.0, connect=8.0)) as client:
-            response = await client.post(url, params={"key": api_key}, json=payload)
+            response = await client.post(url, headers={"x-goog-api-key": api_key}, json=payload)
             response.raise_for_status()
             data = response.json()
     except httpx.TimeoutException as exc:
