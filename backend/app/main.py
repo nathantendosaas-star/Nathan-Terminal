@@ -36,7 +36,7 @@ async def overview() -> dict[str, str]:
     }
 
 
-@app.get("/api/v1/markets/{symbol}/candles")
+@app.get("/api/v1/markets/{symbol:path}/candles")
 async def market_candles(
     symbol: str,
     interval: str = Query(default="1h"),
