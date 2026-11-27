@@ -59,7 +59,7 @@ The Twelve Data adapter normalizes returned candles to chronological UTC OHLCV r
 - **Frontend:** React, TypeScript, Vite, Recharts
 - **Backend:** Python, FastAPI, Pydantic, httpx
 - **Live crypto market data:** Binance public REST API
-- **Planned traditional-market data:** Twelve Data
+- **Traditional-market data:** Twelve Data
 - **Planned forecasting:** Kronos-mini
 - **Planned AI analysis:** configurable Gemini model
 
