@@ -34,6 +34,14 @@ def _parse_datetime(value: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def _candle_end(start: datetime, interval: str, duration: timedelta | None) -> datetime:
+    if duration is not None:
+        return start + duration
+    month = start.month % 12 + 1
+    year = start.year + (1 if start.month == 12 else 0)
+    return start.replace(year=year, month=month)
+
+
 def _normalize_values(values: list[dict[str, Any]], interval: str) -> list[dict[str, Any]]:
     provider_interval, duration = INTERVALS[interval]
     candles = []
@@ -44,7 +52,7 @@ def _normalize_values(values: list[dict[str, Any]], interval: str) -> list[dict[
             volume = float(row.get("volume") or 0)
             if not all(math.isfinite(value) for value in (*numbers.values(), volume)):
                 continue
-            end = start + duration if duration else start
+            end = _candle_end(start, interval, duration)
             candles.append({
                 "time": start.isoformat(),
                 "close_time": end.isoformat(),
@@ -100,7 +108,7 @@ async def get_twelve_data_candles(
     if not isinstance(payload, dict):
         raise HTTPException(status_code=502, detail="Twelve Data returned an unexpected response.")
     if payload.get("status") == "error" or payload.get("code"):
-        code = payload.get("code")
+        code = payload.get("code")\n        try:\n            code = int(code) if code is not None else None\n        except (TypeError, ValueError):\n            code = None
         if code in (401, 403):
             raise HTTPException(status_code=502, detail="Twelve Data rejected the configured API key.")
         if code == 429:
