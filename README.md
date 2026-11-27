@@ -12,7 +12,8 @@ A personal financial intelligence and trading analysis terminal combining market
 - [x] Binance public REST adapter for spot OHLCV candles
 - [x] BTC/USDT chart connected to Binance REST with 60-second refresh
 - [ ] Twelve Data adapter for traditional markets
-- [ ] Technical indicators and dedicated candlestick chart
+- [x] RSI, MACD, EMA/SMA, ATR, swing support/resistance, and market-structure calculations
+- [ ] Dedicated candlestick chart
 - [ ] Kronos-mini forecasting service
 - [ ] Gemini research and structured trade-plan generation
 - [ ] Deterministic risk validation and manual trade journal
