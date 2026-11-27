@@ -24,7 +24,10 @@ def _connect():
     connection.row_factory = sqlite3.Row
     connection.execute("""CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), account_equity REAL NOT NULL, account_currency TEXT NOT NULL, risk_per_trade_pct REAL NOT NULL, maximum_daily_loss_pct REAL NOT NULL, maximum_simultaneous_positions INTEGER NOT NULL, minimum_risk_reward REAL NOT NULL, maximum_market_data_age_seconds INTEGER NOT NULL)""")
     connection.execute("""CREATE TABLE IF NOT EXISTS instruments (symbol TEXT PRIMARY KEY, contract_multiplier REAL NOT NULL, quantity_step REAL NOT NULL, minimum_quantity REAL NOT NULL, quote_currency TEXT NOT NULL, specification_note TEXT NOT NULL)""")
-    connection.execute("""CREATE TABLE IF NOT EXISTS trades (id INTEGER PRIMARY KEY AUTOINCREMENT, symbol TEXT NOT NULL, direction TEXT NOT NULL, entry_price REAL NOT NULL, stop_loss REAL NOT NULL, take_profit REAL NOT NULL, quantity REAL NOT NULL, risk_amount REAL NOT NULL, risk_reward REAL NOT NULL, status TEXT NOT NULL, opened_at TEXT NOT NULL, closed_at TEXT, exit_price REAL, realized_pnl REAL)""")
+    connection.execute("""CREATE TABLE IF NOT EXISTS trades (id INTEGER PRIMARY KEY AUTOINCREMENT, symbol TEXT NOT NULL, direction TEXT NOT NULL, entry_price REAL NOT NULL, stop_loss REAL NOT NULL, take_profit REAL NOT NULL, quantity REAL NOT NULL, contract_multiplier REAL NOT NULL DEFAULT 1, risk_amount REAL NOT NULL, risk_reward REAL NOT NULL, status TEXT NOT NULL, opened_at TEXT NOT NULL, closed_at TEXT, exit_price REAL, realized_pnl REAL)""")
+    trade_columns = {row["name"] for row in connection.execute("PRAGMA table_info(trades)").fetchall()}
+    if "contract_multiplier" not in trade_columns:
+        connection.execute("ALTER TABLE trades ADD COLUMN contract_multiplier REAL NOT NULL DEFAULT 1")
     connection.execute("INSERT OR IGNORE INTO settings (id, account_equity, account_currency, risk_per_trade_pct, maximum_daily_loss_pct, maximum_simultaneous_positions, minimum_risk_reward, maximum_market_data_age_seconds) VALUES (1,?,?,?,?,?,?,?)", tuple(DEFAULT_SETTINGS.values()))
     connection.commit()
     return connection
@@ -153,7 +156,7 @@ def register_trade(plan: TradePlan):
             raise HTTPException(status_code=409, detail={"validation": result, "message": "Trade not registered. Resolve all risk checks and explicitly submit again."})
         if plan.quantity is None:
             raise HTTPException(status_code=422, detail="Enter the exact intended quantity before manual registration.")
-        cursor = conn.execute("INSERT INTO trades (symbol,direction,entry_price,stop_loss,take_profit,quantity,risk_amount,risk_reward,status,opened_at) VALUES (?,?,?,?,?,?,?,?,?,?)", (plan.symbol.strip().upper(), plan.direction, plan.entry_price, plan.stop_loss, plan.take_profit, plan.quantity, result["planned_risk_amount"], result["risk_reward"], "OPEN", datetime.now(timezone.utc).isoformat()))
+        cursor = conn.execute("INSERT INTO trades (symbol,direction,entry_price,stop_loss,take_profit,quantity,contract_multiplier,risk_amount,risk_reward,status,opened_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)", (plan.symbol.strip().upper(), plan.direction, plan.entry_price, plan.stop_loss, plan.take_profit, plan.quantity, result["instrument"]["contract_multiplier"], result["planned_risk_amount"], result["risk_reward"], "OPEN", datetime.now(timezone.utc).isoformat()))
         conn.commit()
         return dict(conn.execute("SELECT * FROM trades WHERE id=?", (cursor.lastrowid,)).fetchone())
 
@@ -177,7 +180,7 @@ def close_trade(trade_id: int, payload: CloseTrade):
         if row["status"] != "OPEN":
             raise HTTPException(status_code=409, detail="Trade is already closed.")
         direction_factor = 1 if row["direction"] == "LONG" else -1
-        pnl = (payload.exit_price - row["entry_price"]) * row["quantity"] * direction_factor
+        pnl = (payload.exit_price - row["entry_price"]) * row["quantity"] * row["contract_multiplier"] * direction_factor
         conn.execute("UPDATE trades SET status='CLOSED',closed_at=?,exit_price=?,realized_pnl=? WHERE id=?", (datetime.now(timezone.utc).isoformat(), payload.exit_price, pnl, trade_id))
         conn.commit()
         return dict(conn.execute("SELECT * FROM trades WHERE id=?", (trade_id,)).fetchone())
