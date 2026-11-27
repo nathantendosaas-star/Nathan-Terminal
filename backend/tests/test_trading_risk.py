@@ -26,6 +26,17 @@ class RiskEngineTests(unittest.TestCase):
         result = calculate_plan(plan, self.settings, self.instrument, 0, 0, 0)
         self.assertEqual(result["status"], "REJECTED")
 
+    def test_daily_loss_limit_rejects_excess_exposure(self):
+        plan = {"symbol": "BTCUSDT", "direction": "LONG", "entry_price": 100, "stop_loss": 95, "take_profit": 110, "quantity": 1}
+        result = calculate_plan(plan, self.settings, self.instrument, 0, -250, 0)
+        self.assertEqual(result["status"], "REJECTED")
+        self.assertTrue(any("daily loss" in reason.lower() for reason in result["reasons"]))
+
+    def test_maximum_positions_is_enforced(self):
+        plan = {"symbol": "BTCUSDT", "direction": "LONG", "entry_price": 100, "stop_loss": 95, "take_profit": 110, "quantity": 1}
+        result = calculate_plan(plan, self.settings, self.instrument, 3, 0, 0)
+        self.assertEqual(result["status"], "REJECTED")
+
     def test_quantity_rounds_down_to_broker_step(self):
         self.assertEqual(floor_to_step(1.239, 0.01), 1.23)
 
