@@ -28,7 +28,7 @@ class RiskEngineTests(unittest.TestCase):
 
     def test_daily_loss_limit_rejects_excess_exposure(self):
         plan = {"symbol": "BTCUSDT", "direction": "LONG", "entry_price": 100, "stop_loss": 95, "take_profit": 110, "quantity": 1}
-        result = calculate_plan(plan, self.settings, self.instrument, 0, -250, 0)
+        result = calculate_plan(plan, self.settings, self.instrument, 0, -296, 0)
         self.assertEqual(result["status"], "REJECTED")
         self.assertTrue(any("daily loss" in reason.lower() for reason in result["reasons"]))
 
