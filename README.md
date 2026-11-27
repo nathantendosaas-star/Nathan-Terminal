@@ -4,7 +4,7 @@ A personal financial intelligence and trading analysis terminal combining market
 
 ## Current status
 
-**Market-data foundation in progress** on `feat/binance-market-data`.
+**Technical-analysis foundation in progress** on `feat/technical-analysis`.
 
 - [x] React + TypeScript + Vite frontend scaffold
 - [x] Dark terminal dashboard shell with overview, watchlist, and forecast/news placeholders
@@ -13,6 +13,7 @@ A personal financial intelligence and trading analysis terminal combining market
 - [x] BTC/USDT chart connected to Binance REST with 60-second refresh
 - [ ] Twelve Data adapter for traditional markets
 - [x] RSI, MACD, EMA/SMA, ATR, swing support/resistance, and market-structure calculations
+- [x] Unit tests for technical indicator edge cases
 - [ ] Dedicated candlestick chart
 - [ ] Kronos-mini forecasting service
 - [ ] Gemini research and structured trade-plan generation
