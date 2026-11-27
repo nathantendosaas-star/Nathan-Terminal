@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 import sys
 import threading
@@ -78,14 +79,13 @@ def forecast_candles(candles: list[dict[str, Any]], interval: str, pred_len: int
 
     import pandas as pd
 
-    predictor = _load_predictor()
     frame = pd.DataFrame(candles)
     frame["timestamps"] = pd.to_datetime(frame["time"], utc=True).dt.tz_localize(None)
     frame = frame[["timestamps", "open", "high", "low", "close", "volume"]].copy()
     for column in ("open", "high", "low", "close", "volume"):
         frame[column] = pd.to_numeric(frame[column], errors="raise")
-    if not frame[["open", "high", "low", "close"]].notna().all().all():
-        raise ValueError("Historical OHLC values must be finite numbers.")
+    if not all(math.isfinite(float(value)) for value in frame[["open", "high", "low", "close", "volume"]].to_numpy().ravel()):
+        raise ValueError("Historical OHLCV values must be finite numbers.")
     frame = frame.tail(MAX_CONTEXT).reset_index(drop=True)
 
     step = {
@@ -98,6 +98,7 @@ def forecast_candles(candles: list[dict[str, Any]], interval: str, pred_len: int
     if step is None:
         raise ValueError(f"Unsupported forecast interval: {interval}")
 
+    predictor = _load_predictor()
     last_timestamp = pd.Timestamp(frame["timestamps"].iloc[-1])
     if isinstance(step, pd.DateOffset):
         future_times = pd.Series([last_timestamp + step * i for i in range(1, pred_len + 1)])
@@ -118,7 +119,7 @@ def forecast_candles(candles: list[dict[str, Any]], interval: str, pred_len: int
     forecast = []
     for timestamp, row in prediction.iterrows():
         values = {key: float(row[key]) for key in ("open", "high", "low", "close", "volume")}
-        if not all(pd.notna(value) for value in values.values()):
+        if not all(math.isfinite(value) for value in values.values()):
             raise RuntimeError("Kronos returned non-finite forecast values.")
         high = max(values["high"], values["open"], values["close"], values["low"])
         low = min(values["low"], values["open"], values["close"], values["high"])
