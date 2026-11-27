@@ -80,4 +80,4 @@ async def analyze_market(request: AnalysisRequest) -> dict:
     answer = "\n".join(part.get("text", "") for part in parts if isinstance(part, dict)).strip()
     if not answer:
         raise HTTPException(status_code=502, detail="Gemini returned no analysis text.")
-    return {"symbol": symbol, "interval": request.interval, "source": source, "model": model, "generated_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(), "candles_analyzed": len(candles), "technical_analysis": technical, "analysis": answer, "disclaimer": "AI-generated market research can be wrong or incomplete. Not investment advice or a trading signal."}
+    return {"symbol": symbol, "interval": request.interval, "source": source, "model": model, "generated_at": datetime.now(timezone.utc).isoformat(), "candles_analyzed": len(candles), "technical_analysis": technical, "analysis": answer, "disclaimer": "AI-generated market research can be wrong or incomplete. Not investment advice or a trading signal."}
