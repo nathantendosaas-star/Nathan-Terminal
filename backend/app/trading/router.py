@@ -108,7 +108,8 @@ def _validate(conn, plan: TradePlan):
     result = calculate_plan(plan.model_dump(), _settings(conn), instrument, count, _daily_pnl(conn), open_risk)
     conflicts = conn.execute("SELECT direction FROM trades WHERE symbol=? AND status='OPEN'", (symbol,)).fetchall()
     if conflicts and any(row["direction"] != plan.direction for row in conflicts):
-        result["status"] = "NEEDS_REVIEW"
+        if result["status"] == "APPROVED":
+            result["status"] = "NEEDS_REVIEW"
         result["reasons"].append("An opposite-direction position is already open in this instrument; review portfolio exposure.")
     result["market_data_age_seconds"] = round(age, 2)
     return result
