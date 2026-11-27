@@ -19,4 +19,6 @@ uvicorn app.main:app --reload --port 8000
 
 The Binance adapter requires no API key. It validates symbol syntax, supported intervals, and a 1–500 candle limit; normalizes timestamps to UTC; and returns explicit provider errors for timeouts, invalid markets, or upstream failures. It does not access account data or place orders.
 
+The candle response also includes a deterministic technical-analysis snapshot: Wilder RSI(14), MACD(12, 26, 9), EMA/SMA(20, 50), ATR(14), latest confirmed two-sided swing support/resistance, and a simple higher-high/higher-low or lower-high/lower-low structure label. Indicators return null when history is insufficient. Swing levels use a two-candle confirmation radius and can appear with a delay. These are descriptive calculations, not trading signals or forecasts.
+
 The frontend's local default API origin is `http://localhost:8000`. Configure its `VITE_API_BASE_URL` environment variable when the API is hosted elsewhere.
