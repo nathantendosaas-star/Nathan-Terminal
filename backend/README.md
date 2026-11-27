@@ -65,3 +65,25 @@ The optional AI Analyst uses Google's Gemini API from the backend. The API key i
 - `POST /api/v1/analysis` — accepts `symbol`, `interval`, `provider` and an optional `question`; fetches up to 200 real candles, calculates technical indicators, and asks Gemini for a structured research read.
 - The analyst covers trend, momentum, volatility, levels, bull/base/bear scenarios, invalidation and missing context. It does not generate trade orders or personalized recommendations.
 - Gemini is an external paid/quota-limited service depending on the user's Google AI plan. Requests may fail when the key, quota, or provider is unavailable.
+
+
+## Risk Engine and Manual Trade Desk
+
+The trade desk is deliberately manual-only. It does not connect to a broker, submit orders, or execute trades.
+
+### Configure before using position sizing
+
+1. Set account equity, account currency, risk per trade, maximum daily loss, maximum simultaneous open positions, minimum risk/reward, and market-data freshness threshold with `PUT /api/v1/trading/settings`.
+2. Register verified instrument specifications with `PUT /api/v1/trading/instruments`: contract multiplier, quantity step, minimum quantity, quote currency, and a note describing the source/contract. No instrument multiplier or broker constraint is assumed by the application.
+3. Validate a plan using `POST /api/v1/trading/validate`. Include symbol, LONG/SHORT, entry, stop-loss, take-profit, exact intended quantity (optional for sizing preview), current market price, and timezone-aware market-data timestamp.
+4. Only an `APPROVED` plan with an explicit quantity can be manually registered using `POST /api/v1/trading/trades`. Validation never registers or modifies a plan.
+5. Review `GET /api/v1/trading/trades`; close a journal entry with `POST /api/v1/trading/trades/{trade_id}/close` and an exit price.
+
+### Risk rules
+
+- Position sizing uses configured account equity, risk percentage, contract multiplier, quantity step, and minimum quantity; suggested quantities are rounded down.
+- Validates direction-specific stop/target placement, risk/reward, per-trade risk budget, daily loss exposure, maximum simultaneous positions, market quote freshness, and conflicting opposite-direction positions.
+- Outcomes are `APPROVED`, `REJECTED`, or `NEEDS_REVIEW`. Missing instrument specifications or quote context require review; hard rule violations reject the plan.
+- The local SQLite journal is stored at `data/trade_desk.sqlite3` by default. Set `TRADING_DB_PATH` to a persistent mounted path in deployment; ephemeral hosting filesystems may lose journal data.
+- P&L journal calculations are gross price-difference calculations and do not include commissions, spread, funding, swaps, slippage, taxes, or currency conversion. Validate contract specs and quote/account currency compatibility yourself.
+- This tool is a decision-support calculator, not financial advice. It does not guarantee fills, stops, or realized loss limits.
