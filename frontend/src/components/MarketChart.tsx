@@ -2,14 +2,33 @@ import { useEffect, useRef } from "react";
 import {
   CandlestickSeries,
   HistogramSeries,
+  LineSeries,
   createChart,
   type CandlestickData,
   type HistogramData,
+  type LineData,
   type UTCTimestamp,
 } from "lightweight-charts";
 import type { Candle, TechnicalAnalysis } from "../lib/marketData";
 
 type Props = { candles: Candle[]; technical: TechnicalAnalysis | null };
+
+
+function ema(values: number[], period: number): number[] {
+  const output: number[] = [];
+  const multiplier = 2 / (period + 1);
+  let previous: number | null = null;
+  values.forEach((value, index) => {
+    if (index + 1 < period) return;
+    if (previous === null) {
+      previous = values.slice(0, period).reduce((sum, item) => sum + item, 0) / period;
+    } else {
+      previous = (value - previous) * multiplier + previous;
+    }
+    output.push(previous);
+  });
+  return output;
+}
 
 export default function MarketChart({ candles, technical }: Props) {
   const host = useRef<HTMLDivElement>(null);
@@ -63,6 +82,32 @@ export default function MarketChart({ candles, technical }: Props) {
       close: c.close,
     }));
     candleSeries.setData(candleData);
+
+    const closes = candles.map((c) => c.close);
+    const ema20 = ema(closes, 20);
+    const ema50 = ema(closes, 50);
+    const ema20Series = chart.addSeries(LineSeries, {
+      color: "#68a9df",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    });
+    ema20Series.setData(candleData.slice(19).map((candle, index): LineData<UTCTimestamp> => ({
+      time: candle.time,
+      value: ema20[index],
+    })));
+    const ema50Series = chart.addSeries(LineSeries, {
+      color: "#bd91e5",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    });
+    ema50Series.setData(candleData.slice(49).map((candle, index): LineData<UTCTimestamp> => ({
+      time: candle.time,
+      value: ema50[index],
+    })));
 
     const volumeSeries = chart.addSeries(HistogramSeries, {
       priceFormat: { type: "volume" },
