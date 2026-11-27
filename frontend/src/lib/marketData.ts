@@ -8,6 +8,20 @@ export type Candle = {
   volume: number;
 };
 
+export type TechnicalAnalysis = {
+  method: "deterministic_ohlcv";
+  candle_count: number;
+  latest_close: number;
+  rsi_14: number | null;
+  macd: { line: number | null; signal: number | null; histogram: number | null };
+  moving_averages: { ema_20: number | null; ema_50: number | null; sma_20: number | null; sma_50: number | null };
+  atr_14: number | null;
+  support: { price: number; distance_from_close_pct: number } | null;
+  resistance: { price: number; distance_from_close_pct: number } | null;
+  market_structure: string;
+  notes: string[];
+};
+
 export type CandleResponse = {
   symbol: string;
   interval: string;
@@ -15,6 +29,7 @@ export type CandleResponse = {
   is_live: boolean;
   count: number;
   candles: Candle[];
+  technical_analysis: TechnicalAnalysis;
 };
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
