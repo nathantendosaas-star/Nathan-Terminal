@@ -4,27 +4,21 @@ A personal financial intelligence and trading analysis terminal combining market
 
 ## Current status
 
-**Foundation build in progress** on `feat/terminal-foundation`.
+**Market-data foundation in progress** on `feat/binance-market-data`.
 
 - [x] React + TypeScript + Vite frontend scaffold
 - [x] Dark terminal dashboard shell with overview, watchlist, and forecast/news placeholders
 - [x] FastAPI backend scaffold with health and overview endpoints
-- [ ] Verified live market-data adapters
-- [ ] Technical indicators and chart integration
+- [x] Binance public REST adapter for spot OHLCV candles
+- [x] BTC/USDT chart connected to Binance REST with 60-second refresh
+- [ ] Twelve Data adapter for traditional markets
+- [ ] Technical indicators and dedicated candlestick chart
 - [ ] Kronos-mini forecasting service
 - [ ] Gemini research and structured trade-plan generation
 - [ ] Deterministic risk validation and manual trade journal
 - [ ] News aggregation, monitoring, and Telegram alerts
 
 ## Run locally
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
 
 ### Backend
 
@@ -36,17 +30,36 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-API health check: `http://localhost:8000/health`.
+### Frontend
 
-The current dashboard uses clearly labeled illustrative demo values. No live market-data provider, forecasting model, AI provider, or broker integration is connected yet.
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Optional frontend environment file: copy `frontend/.env.example` to `frontend/.env.local` and set `VITE_API_BASE_URL` if the API is not running at `http://localhost:8000`.
+
+## Market data API
+
+The backend calls Binance's public spot klines endpoint; no API key or trading permission is required.
+
+```http
+GET /api/v1/markets/BTCUSDT/candles?interval=1h&limit=100
+```
+
+Supported intervals include `1m`, `5m`, `15m`, `1h`, `4h`, `1d`, and other Binance spot intervals. The API validates symbols, intervals, and limits (1–500), returns UTC timestamps and OHLCV values, and reports provider failures rather than inventing prices.
+
+The chart refreshes the latest 100 hourly candles every 60 seconds. This is REST polling, not a WebSocket stream. If the API is unavailable, the chart falls back to clearly labeled illustrative demo data. Other dashboard metrics and watchlist values remain demo placeholders.
 
 ## Architecture
 
-- **Frontend:** React, TypeScript, Vite, Recharts (temporary overview visualization)
-- **Backend:** Python, FastAPI, Pydantic
+- **Frontend:** React, TypeScript, Vite, Recharts
+- **Backend:** Python, FastAPI, Pydantic, httpx
+- **Live crypto market data:** Binance public REST API
+- **Planned traditional-market data:** Twelve Data
 - **Planned forecasting:** Kronos-mini
 - **Planned AI analysis:** configurable Gemini model
-- **Planned market data:** Twelve Data, Binance public REST/WebSocket, Yahoo Finance fallback
 
 ## Safety boundaries
 
