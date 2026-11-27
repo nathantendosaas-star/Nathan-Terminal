@@ -50,3 +50,39 @@ export async function fetchCandles(
   }
   return response.json() as Promise<CandleResponse>;
 }
+
+export type ForecastCandle = {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+};
+
+export type ForecastResponse = {
+  model: string;
+  device: string | null;
+  historical_count: number;
+  forecast_count: number;
+  inference_ms: number;
+  process_peak_memory_mb: number | null;
+  historical_candles: ForecastCandle[];
+  forecast_candles: ForecastCandle[];
+  disclaimer: string;
+};
+
+export async function fetchForecast(
+  symbol: string,
+  interval: string,
+  provider: "binance" | "twelvedata" = "binance",
+  predLen = 24,
+): Promise<ForecastResponse> {
+  const query = new URLSearchParams({ interval, provider, limit: "200", pred_len: String(predLen) });
+  const response = await fetch(`${API_BASE}/api/v1/forecasts/${encodeURIComponent(symbol)}?${query.toString()}`);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.detail || `Forecast request failed (${response.status}).`);
+  }
+  return response.json() as Promise<ForecastResponse>;
+}

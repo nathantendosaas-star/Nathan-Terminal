@@ -1,0 +1,9 @@
+# Install the upstream Kronos source into backend/vendor/Kronos (see backend/README.md).
+# Model runtime dependencies; choose the PyTorch wheel appropriate for CPU or CUDA.
+torch>=2.0.0
+numpy>=1.24
+pandas>=2.0
+einops==0.8.1
+huggingface_hub==0.33.1
+safetensors>=0.4
+tqdm>=4.60
