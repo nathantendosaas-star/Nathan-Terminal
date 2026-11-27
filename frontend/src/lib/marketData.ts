@@ -25,7 +25,7 @@ export type TechnicalAnalysis = {
 export type CandleResponse = {
   symbol: string;
   interval: string;
-  source: "binance_spot";
+  source: "binance_spot" | "twelve_data";
   is_live: boolean;
   count: number;
   candles: Candle[];
@@ -38,8 +38,9 @@ export async function fetchCandles(
   symbol = "BTCUSDT",
   interval = "1h",
   limit = 100,
+  provider: "binance" | "twelvedata" = "binance",
 ): Promise<CandleResponse> {
-  const query = new URLSearchParams({ interval, limit: String(limit) });
+  const query = new URLSearchParams({ interval, limit: String(limit), provider });
   const response = await fetch(
     `${API_BASE}/api/v1/markets/${encodeURIComponent(symbol)}/candles?${query.toString()}`,
   );
