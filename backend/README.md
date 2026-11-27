@@ -52,3 +52,16 @@ The default source path is `backend/vendor/Kronos`. Set `KRONOS_SOURCE_PATH` if 
 - The response includes inference duration and process peak resident memory where the platform exposes it. These are runtime observations, not benchmark guarantees.
 
 The model is loaded only on demand. If the upstream source or model weights are unavailable, the API returns an explicit 503 error; it never substitutes synthetic forecasts. Kronos forecasts are probabilistic estimates for research, not trading signals or investment advice.
+
+## Gemini AI Analyst
+
+The optional AI Analyst uses Google's Gemini API from the backend. The API key is never sent to the browser.
+
+1. Create a Gemini API key in Google AI Studio.
+2. Set `GEMINI_API_KEY` in the backend environment (see `.env.gemini.example`). Optionally set `GEMINI_MODEL`; the default is `gemini-2.5-flash`.
+3. Restart the backend.
+
+- `GET /api/v1/analysis/status` — reports whether Gemini is configured and the selected model.
+- `POST /api/v1/analysis` — accepts `symbol`, `interval`, `provider` and an optional `question`; fetches up to 200 real candles, calculates technical indicators, and asks Gemini for a structured research read.
+- The analyst covers trend, momentum, volatility, levels, bull/base/bear scenarios, invalidation and missing context. It does not generate trade orders or personalized recommendations.
+- Gemini is an external paid/quota-limited service depending on the user's Google AI plan. Requests may fail when the key, quota, or provider is unavailable.
