@@ -2,7 +2,8 @@ from datetime import datetime, timezone
 import os
 from typing import Literal
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -16,6 +17,7 @@ from app.monitoring.router import router as monitoring_router
 from app.news.router import router as news_router
 from app.thesis.router import router as thesis_router
 from app.sessions.router import router as sessions_router
+from app.auth.router import router as auth_router, token_is_valid
 
 app = FastAPI(title="Nathan Terminal API", version="0.4.0", description="Personal market intelligence and decision-support API.")
 app.include_router(forecasting_router)
@@ -25,6 +27,7 @@ app.include_router(monitoring_router)
 app.include_router(news_router)
 app.include_router(thesis_router)
 app.include_router(sessions_router)
+app.include_router(auth_router)
 
 # Comma-separated origins support separate frontend domains in production.
 # Same-origin deployments through the included Nginx proxy do not need CORS.
@@ -33,6 +36,18 @@ frontend_origins = [
     for origin in os.getenv("FRONTEND_ORIGIN", "http://localhost:5173").split(",")
     if origin.strip()
 ]
+@app.middleware("http")
+async def password_guard(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/api/") and path not in {"/api/v1/auth/status", "/api/v1/auth/login"} and request.method != "OPTIONS":
+        if os.getenv("APP_PASSWORD_HASH"):
+            authorization = request.headers.get("authorization", "")
+            token = authorization.removeprefix("Bearer ").strip() if authorization.startswith("Bearer ") else ""
+            if not token or not token_is_valid(token):
+                return JSONResponse(status_code=401, content={"detail": "Authentication required. Unlock your terminal and try again."})
+    return await call_next(request)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=frontend_origins,

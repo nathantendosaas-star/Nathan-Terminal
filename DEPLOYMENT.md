@@ -24,7 +24,21 @@ docker compose logs -f api frontend
 
 Open `http://localhost:8080` (or your configured `APP_PORT`). The frontend proxies `/api/*` and `/health` to FastAPI, so the browser uses a same-origin API and no public backend port is required.
 
+## Single-owner password protection
+
+Before exposing the app, configure password authentication on the backend:
+
+1. In a local checkout, run `cd backend && python -m app.auth.password_hash`. Choose a unique password of at least 12 characters and copy the generated `APP_PASSWORD_HASH` output.
+2. Generate a separate random `AUTH_SECRET_KEY` with at least 32 characters (for example, `python -c "import secrets; print(secrets.token_urlsafe(48))"`).
+3. Set both values as **backend environment variables on Render**. Never put either value in Vercel, frontend build variables, Git, or chat.
+4. Set `FRONTEND_ORIGIN` on Render to the exact deployed Vercel origin, such as `https://your-project.vercel.app`.
+5. Set `VITE_API_BASE_URL` in Vercel to the Render backend origin, such as `https://your-api.onrender.com`, then redeploy the frontend.
+6. Redeploy the Render backend. The app will show a password gate; API routes require a signed, 12-hour bearer session. The login endpoint limits repeated attempts per process.
+
+The password hash is generated with scrypt; the raw password is never stored by the backend. The browser keeps the short-lived access token in tab-scoped session storage and clears it when the session expires or the user locks the terminal. OAuth and multi-user accounts are not included yet. Use HTTPS for both origins.
+
 ## Configuration
+
 
 | Variable | Purpose | Default |
 | --- | --- | --- |

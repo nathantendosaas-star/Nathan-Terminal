@@ -38,6 +38,10 @@ npm run dev
 
 Vite proxies `/api/*` and `/health` to `http://localhost:8000` in development. For a separately hosted API, set `VITE_API_BASE_URL` in the frontend build environment.
 
+## Password protection
+
+The app supports a single-owner password gate (OAuth and multi-user accounts are planned separately). Generate `APP_PASSWORD_HASH` with `cd backend && python -m app.auth.password_hash`, generate a random `AUTH_SECRET_KEY`, and configure both as backend-only environment variables. See [DEPLOYMENT.md](DEPLOYMENT.md#single-owner-password-protection). Do not expose the app publicly until the password hash and secret are configured and HTTPS is enabled.
+
 ## Docker deployment
 
 The repository includes a Docker Compose deployment with a multi-stage frontend image, Nginx reverse proxy, FastAPI container, health checks, and persistent named volumes for the SQLite trade journal and Hugging Face cache.

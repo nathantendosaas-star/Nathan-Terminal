@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     environment:
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:8080}
+      APP_PASSWORD_HASH: ${APP_PASSWORD_HASH:-}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-}
       TWELVE_DATA_API_KEY: ${TWELVE_DATA_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}

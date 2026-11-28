@@ -10,7 +10,7 @@ export type GeminiAnalysisResponse = {
   disclaimer: string;
 };
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 export async function fetchGeminiStatus(): Promise<{configured:boolean;model:string;provider:string}> {
   const response = await fetch(`${API_BASE}/api/v1/analysis/status`);
