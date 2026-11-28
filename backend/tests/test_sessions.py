@@ -1,7 +1,7 @@
 """Session lifecycle API contract tests."""
 import os
-import sqlite3
-import tempfile
+import uuid
+import psycopg
 import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
@@ -9,21 +9,20 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.sessions import router as sessions_router
 
 
 class SessionLifecycleTests(unittest.TestCase):
     def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.db_path = os.path.join(self.temp_dir.name, "sessions.sqlite3")
-        self.db_patch = patch.object(sessions_router, "DB_PATH", self.db_path)
-        self.db_patch.start()
+        self.schema = "test_" + uuid.uuid4().hex
+        self.schema_patch = patch.dict(os.environ, {"DATABASE_SCHEMA": self.schema})
+        self.schema_patch.start()
         self.client = TestClient(app)
 
     def tearDown(self):
         self.client.close()
-        self.db_patch.stop()
-        self.temp_dir.cleanup()
+        self.schema_patch.stop()
+        with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+            conn.execute('DROP SCHEMA IF EXISTS "' + self.schema + '" CASCADE')
 
     def test_starts_eight_hour_session_with_explicit_market_subscriptions(self):
         response = self.client.post("/api/v1/sessions/start", json={})
@@ -60,7 +59,8 @@ class SessionLifecycleTests(unittest.TestCase):
 
     def test_expired_session_is_automatically_marked_expired(self):
         started = self.client.post("/api/v1/sessions/start", json={}).json()["session"]
-        with sqlite3.connect(self.db_path) as conn:
+        from app.database import connect
+        with connect() as conn:
             past = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
             conn.execute("UPDATE market_sessions SET expires_at=? WHERE id=?", (past, started["id"]))
         current = self.client.get("/api/v1/sessions/current").json()
