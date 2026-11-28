@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import os
 from typing import Literal
 
 from fastapi import FastAPI, Query
@@ -12,11 +13,25 @@ from app.forecasting.router import router as forecasting_router
 from app.analysis.router import router as analysis_router
 from app.trading.router import router as trading_router
 
-app = FastAPI(title="Nathan Terminal API", version="0.3.0", description="Personal market intelligence and decision-support API.")
+app = FastAPI(title="Nathan Terminal API", version="0.4.0", description="Personal market intelligence and decision-support API.")
 app.include_router(forecasting_router)
 app.include_router(analysis_router)
 app.include_router(trading_router)
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# Comma-separated origins support separate frontend domains in production.
+# Same-origin deployments through the included Nginx proxy do not need CORS.
+frontend_origins = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv("FRONTEND_ORIGIN", "http://localhost:5173").split(",")
+    if origin.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=frontend_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+)
 
 
 class ServiceStatus(BaseModel):
