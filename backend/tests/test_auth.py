@@ -31,7 +31,7 @@ class PasswordAuthTests(unittest.TestCase):
             self.assertEqual(response.status_code,200)
             self.assertNotIn("password",response.json())
             self.assertEqual(self.client.get("/api/v1/overview",headers={"Authorization":"Bearer "+response.json()["access_token"]}).status_code,200)
-            self.assertEqual(self.client.post("/api/v1/auth/setup",json={"password":"another-password-123"}).status_code,409)
+            self.assertEqual(self.client.post("/api/v1/auth/setup",json={"password":"another-password-123"}).status_code,401)
             stored_hash=__import__("app.auth.router",fromlist=["get_setting"]).get_setting("auth_password_hash")
             self.assertTrue(stored_hash.startswith("scrypt$"))
             self.assertNotIn("phone-first-password-123",stored_hash)
