@@ -17,7 +17,7 @@ from app.monitoring.router import router as monitoring_router
 from app.news.router import router as news_router
 from app.thesis.router import router as thesis_router
 from app.sessions.router import router as sessions_router
-from app.auth.router import router as auth_router, token_is_valid
+from app.auth.router import router as auth_router, token_is_valid, auth_is_configured
 
 app = FastAPI(title="Nathan Terminal API", version="0.4.0", description="Personal market intelligence and decision-support API.")
 app.include_router(forecasting_router)
@@ -40,7 +40,7 @@ frontend_origins = [
 async def password_guard(request: Request, call_next):
     path = request.url.path
     if path.startswith("/api/") and path not in {"/api/v1/auth/status", "/api/v1/auth/login"} and request.method != "OPTIONS":
-        if os.getenv("APP_PASSWORD_HASH"):
+        if auth_is_configured():
             authorization = request.headers.get("authorization", "")
             token = authorization.removeprefix("Bearer ").strip() if authorization.startswith("Bearer ") else ""
             if not token or not token_is_valid(token):
