@@ -1,6 +1,6 @@
 """Single-owner password setup/login with persistent signed bearer sessions."""
 from __future__ import annotations
-import base64, hashlib, hmac, json, os, secrets, sqlite3, time
+import base64, hashlib, hmac, json, os, secrets, time
 from collections import defaultdict, deque
 from app.database import connect as _postgres_connect
 from threading import Lock
