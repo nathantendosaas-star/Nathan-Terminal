@@ -38,7 +38,7 @@ For Docker Compose, put `DATABASE_URL` in the untracked `.env` file before start
 
 Password protection is initialized from the app itself; no terminal, laptop, password-hash command, or manually generated signing secret is required.
 
-1. Deploy the backend with a persistent database path. The default auth database shares the trade-journal SQLite file; in Docker Compose it is mounted at `/data/trade_desk.sqlite3`.
+1. Deploy the backend with `DATABASE_URL` set to the Supabase Session Pooler connection string and `DATABASE_SCHEMA=app`.
 2. Open the HTTPS frontend on your phone. On first visit, the app displays a **Create your password** screen.
 3. Enter and confirm a unique password of at least 12 characters. The browser sends it over HTTPS to the backend's one-time setup endpoint. The backend hashes it with scrypt and stores only the hash.
 4. The backend generates and stores its own random signing secret in the PostgreSQL `app.app_settings` table. You do not need to create or configure `AUTH_SECRET_KEY`.
