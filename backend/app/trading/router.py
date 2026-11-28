@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+from app.database import connect as _postgres_connect
 from datetime import datetime, timezone
 from typing import Literal
 
@@ -17,18 +18,11 @@ DEFAULT_SETTINGS = {"account_equity": 10000.0, "account_currency": "USD", "risk_
 
 
 def _connect():
-    folder = os.path.dirname(DB_PATH)
-    if folder:
-        os.makedirs(folder, exist_ok=True)
-    connection = sqlite3.connect(DB_PATH, timeout=10)
-    connection.row_factory = sqlite3.Row
+    connection = _postgres_connect()
     connection.execute("""CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), account_equity REAL NOT NULL, account_currency TEXT NOT NULL, risk_per_trade_pct REAL NOT NULL, maximum_daily_loss_pct REAL NOT NULL, maximum_simultaneous_positions INTEGER NOT NULL, minimum_risk_reward REAL NOT NULL, maximum_market_data_age_seconds INTEGER NOT NULL)""")
     connection.execute("""CREATE TABLE IF NOT EXISTS instruments (symbol TEXT PRIMARY KEY, contract_multiplier REAL NOT NULL, quantity_step REAL NOT NULL, minimum_quantity REAL NOT NULL, quote_currency TEXT NOT NULL, specification_note TEXT NOT NULL)""")
     connection.execute("""CREATE TABLE IF NOT EXISTS trades (id INTEGER PRIMARY KEY AUTOINCREMENT, symbol TEXT NOT NULL, direction TEXT NOT NULL, entry_price REAL NOT NULL, stop_loss REAL NOT NULL, take_profit REAL NOT NULL, quantity REAL NOT NULL, contract_multiplier REAL NOT NULL DEFAULT 1, risk_amount REAL NOT NULL, risk_reward REAL NOT NULL, status TEXT NOT NULL, opened_at TEXT NOT NULL, closed_at TEXT, exit_price REAL, realized_pnl REAL)""")
-    trade_columns = {row["name"] for row in connection.execute("PRAGMA table_info(trades)").fetchall()}
-    if "contract_multiplier" not in trade_columns:
-        connection.execute("ALTER TABLE trades ADD COLUMN contract_multiplier REAL NOT NULL DEFAULT 1")
-    connection.execute("INSERT OR IGNORE INTO settings (id, account_equity, account_currency, risk_per_trade_pct, maximum_daily_loss_pct, maximum_simultaneous_positions, minimum_risk_reward, maximum_market_data_age_seconds) VALUES (1,?,?,?,?,?,?,?)", tuple(DEFAULT_SETTINGS.values()))
+    connection.execute("INSERT INTO settings (id, account_equity, account_currency, risk_per_trade_pct, maximum_daily_loss_pct, maximum_simultaneous_positions, minimum_risk_reward, maximum_market_data_age_seconds) VALUES (1,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING", tuple(DEFAULT_SETTINGS.values()))
     connection.commit()
     return connection
 
