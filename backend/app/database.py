@@ -30,10 +30,6 @@ class Cursor:
 
     @property
     def lastrowid(self):
-        if self._lastrowid is None and self._cursor.description:
-            row = self._cursor.fetchone()
-            if row is not None:
-                self._lastrowid = row["id"]
         return self._lastrowid
 
     def fetchone(self):
@@ -64,7 +60,12 @@ class Connection:
             statement += " RETURNING id"
         statement = statement.replace("?", "%s")
         cursor = self._connection.execute(statement, params)
-        return Cursor(cursor)
+        lastrowid = None
+        if match:
+            returned = cursor.fetchone()
+            if returned is not None:
+                lastrowid = returned["id"]
+        return Cursor(cursor, lastrowid)
 
     def commit(self):
         self._connection.commit()
