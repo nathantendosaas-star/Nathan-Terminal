@@ -73,7 +73,7 @@ The model is loaded only on demand. If the upstream source or model weights are 
 The optional AI Analyst uses Google's Gemini API from the backend. The API key is never sent to the browser.
 
 1. Create a Gemini API key in Google AI Studio.
-2. Set `GEMINI_API_KEY` in the backend environment (see `.env.gemini.example`). Optionally set `GEMINI_MODEL`; the default is `gemini-2.5-flash`.
+2. Set `GEMINI_API_KEY` in the backend environment (see `.env.gemini.example`). Optionally set `GEMINI_MODEL`; the default is `gemini-3.8-flash`.
 3. Restart the backend.
 
 - `GET /api/v1/analysis/status` — reports whether Gemini is configured and the selected model.
