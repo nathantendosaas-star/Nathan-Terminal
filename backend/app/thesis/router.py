@@ -19,7 +19,6 @@ from app.market_data.twelve_data import get_twelve_data_candles
 from app.market_data.technical import calculate_technical_analysis
 from app.monitoring import router as monitoring
 from app.monitoring.router import _send_and_record
-from app.trading.router import _connect as _trading_connect
 
 router = APIRouter(prefix="/api/v1/thesis", tags=["trade thesis"])
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
@@ -30,7 +29,7 @@ INTERVAL_MAX_AGE_SECONDS = {"1m": 120, "3m": 360, "5m": 600, "15m": 1800, "30m":
 
 
 def _connect():
-    conn = _trading_connect()
+    conn = monitoring._connect()
     conn.execute("""CREATE TABLE IF NOT EXISTS trade_theses (
         trade_id INTEGER PRIMARY KEY,
         original_thesis TEXT NOT NULL,
