@@ -6,6 +6,7 @@ from pathlib import Path
 from threading import Lock
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
+from app.database import connect_postgres, using_postgres
 router=APIRouter(prefix="/api/v1/auth",tags=["authentication"])
 TOKEN_TTL_SECONDS=12*60*60
 _attempts:dict[str,deque[float]]=defaultdict(deque)
@@ -16,7 +17,12 @@ class LoginRequest(BaseModel):
     password:str=Field(min_length=1,max_length=1024)
 def _db_path()->str:
     return os.getenv("AUTH_DB_PATH") or os.getenv("TRADING_DB_PATH") or str(Path(__file__).resolve().parents[2]/"data"/"trade_desk.sqlite3")
-def _connect()->sqlite3.Connection:
+def _connect():
+    if using_postgres():
+        connection=connect_postgres()
+        connection.execute("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        connection.commit()
+        return connection
     path=_db_path();Path(path).parent.mkdir(parents=True,exist_ok=True)
     connection=sqlite3.connect(path,timeout=15);connection.execute("PRAGMA busy_timeout=15000")
     connection.execute("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
