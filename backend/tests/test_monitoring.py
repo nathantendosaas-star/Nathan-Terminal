@@ -1,5 +1,6 @@
 import os
-import tempfile
+import uuid
+import psycopg
 import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
@@ -7,19 +8,14 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.trading import router as trading
-from app.monitoring import router as monitoring
 from app.push import service as push_service
 
 
 class MonitoringTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.db = os.path.join(self.temp.name, "monitoring.sqlite3")
-        self.trading_path = trading.DB_PATH
-        self.monitoring_path = monitoring.DB_PATH
-        trading.DB_PATH = self.db
-        monitoring.DB_PATH = self.db
+        self.schema = "test_" + uuid.uuid4().hex
+        self.schema_patch = patch.dict(os.environ, {"DATABASE_SCHEMA": self.schema})
+        self.schema_patch.start()
         self.client = TestClient(app)
         with self.client:
             self.client.put("/api/v1/trading/instruments", json={
@@ -41,9 +37,9 @@ class MonitoringTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200, response.text)
 
     def tearDown(self):
-        trading.DB_PATH = self.trading_path
-        monitoring.DB_PATH = self.monitoring_path
-        self.temp.cleanup()
+        self.schema_patch.stop()
+        with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+            conn.execute('DROP SCHEMA IF EXISTS "' + self.schema + '" CASCADE')
 
     def test_snapshot_crossing_stop_creates_one_deduplicated_event(self):
         payload = {
