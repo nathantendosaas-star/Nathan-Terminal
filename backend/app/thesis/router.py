@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 from app.market_data.binance import get_binance_candles
 from app.market_data.twelve_data import get_twelve_data_candles
 from app.market_data.technical import calculate_technical_analysis
-from app.monitoring.router import _send_and_record
+from app.monitoring import router as monitoring\nfrom app.monitoring.router import _send_and_record
 from app.trading.router import _connect as _trading_connect
 
 router = APIRouter(prefix="/api/v1/thesis", tags=["trade thesis"])
@@ -173,12 +173,10 @@ async def reassess_trade_thesis(trade_id: int, request: ReassessmentRequest):
         if saved is None:
             if not request.original_thesis or not request.original_analysis:
                 raise HTTPException(status_code=422, detail="Provide the original thesis and original Gemini analysis for the first reassessment.")
-            conn.execute(
-                "INSERT INTO trade_theses (trade_id,original_thesis,original_analysis,created_at) VALUES (?,?,?,?)",
-                (trade_id, request.original_thesis.strip(), request.original_analysis.strip(), datetime.now(timezone.utc).isoformat()),
-            )
-            conn.commit()
-            thesis = dict(conn.execute("SELECT * FROM trade_theses WHERE trade_id=?", (trade_id,)).fetchone())
+            thesis = {
+                "original_thesis": request.original_thesis.strip(),
+                "original_analysis": request.original_analysis.strip(),
+            }
         else:
             thesis = dict(saved)
             if request.original_thesis and request.original_thesis.strip() != thesis["original_thesis"]:
@@ -228,6 +226,12 @@ async def reassess_trade_thesis(trade_id: int, request: ReassessmentRequest):
         result["missing_evidence"] = list(result["missing_evidence"]) + ["Relevant news feed unavailable; verify external news independently."]
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
+        existing_thesis = conn.execute("SELECT trade_id FROM trade_theses WHERE trade_id=?", (trade_id,)).fetchone()
+        if existing_thesis is None:
+            conn.execute(
+                "INSERT INTO trade_theses (trade_id,original_thesis,original_analysis,created_at) VALUES (?,?,?,?)",
+                (trade_id, thesis["original_thesis"], thesis["original_analysis"], now),
+            )
         cursor = conn.execute(
             "INSERT INTO thesis_reassessments (trade_id,status,assessment,evidence_json,changes_json,model,created_at) VALUES (?,?,?,?,?,?,?)",
             (trade_id, result["status"], result["assessment"], json.dumps(evidence), json.dumps(result), model, now),
