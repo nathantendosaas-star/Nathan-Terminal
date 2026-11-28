@@ -16,6 +16,8 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from app.database import connect_postgres, using_postgres
+
 router = APIRouter(prefix="/api/v1/sessions", tags=["sessions"])
 DB_PATH = os.getenv("SESSION_DB_PATH", "data/sessions.sqlite3")
 MAX_SESSION_HOURS = 8
@@ -34,7 +36,12 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _connect() -> sqlite3.Connection:
+def _connect():
+    if using_postgres():
+        conn = connect_postgres()
+        conn.execute("""CREATE TABLE IF NOT EXISTS market_sessions (id TEXT PRIMARY KEY, status TEXT NOT NULL CHECK(status IN ('ACTIVE','STOPPED','EXPIRED')), started_at TEXT NOT NULL, expires_at TEXT NOT NULL, ended_at TEXT, interval TEXT NOT NULL, symbols_json TEXT NOT NULL)""")
+        conn.commit()
+        return conn
     os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
@@ -111,6 +118,8 @@ async def start_session(request: SessionStart) -> dict:
     ]
     with _connect() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        if using_postgres():
+            conn.execute("LOCK TABLE market_sessions IN EXCLUSIVE MODE")
         _expire_active(conn, now)
         active = conn.execute(
             "SELECT id FROM market_sessions WHERE status='ACTIVE' LIMIT 1"
