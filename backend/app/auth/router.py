@@ -15,7 +15,10 @@ class PasswordRequest(BaseModel):
 class LoginRequest(BaseModel):
     password:str=Field(min_length=1,max_length=1024)
 def _connect():
-    return _postgres_connect()
+    connection = _postgres_connect()
+    connection.execute("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+    connection.commit()
+    return connection
 
 def get_setting(key:str,default:str="")->str:
     connection=_connect()
