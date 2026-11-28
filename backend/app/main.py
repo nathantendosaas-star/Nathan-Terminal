@@ -63,6 +63,7 @@ async def overview() -> dict[str, str]:
         "forecast_model": "kronos_mini_optional",
         "ai_analyst": "gemini_optional",
         "trade_desk": "manual_only",
+        "session_max_duration_hours": "8",
         "message": "Market data, Kronos-mini forecasts, Gemini analysis, and a manual-only trade desk are available; no broker execution is enabled.",
     }
 
