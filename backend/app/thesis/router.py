@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import math
 import os
-import sqlite3
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any, Literal
