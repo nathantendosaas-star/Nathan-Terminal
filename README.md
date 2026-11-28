@@ -18,6 +18,8 @@ A personal financial intelligence and trading analysis terminal combining live m
 
 ## Run locally
 
+The backend now requires PostgreSQL. Set `DATABASE_URL` and `DATABASE_SCHEMA=app`, and apply `backend/migrations/001_initial_postgresql.sql` before starting FastAPI.
+
 The backend requires a PostgreSQL database. Set `DATABASE_URL` and `DATABASE_SCHEMA=app` before starting the API. Apply `backend/migrations/001_initial_postgresql.sql` once to your database.
 
 ### Backend
