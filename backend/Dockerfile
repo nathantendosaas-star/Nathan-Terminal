@@ -3,11 +3,10 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    TRADING_DB_PATH=/data/trade_desk.sqlite3 \
     HF_HOME=/models/huggingface
 
 WORKDIR /app
-RUN useradd --create-home --uid 10001 appuser && mkdir -p /data /models/huggingface && chown -R appuser:appuser /app /data /models
+RUN useradd --create-home --uid 10001 appuser && mkdir -p /models/huggingface && chown -R appuser:appuser /app /models
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
