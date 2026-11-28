@@ -52,15 +52,15 @@ class Connection:
         statement = sql.strip()
         if statement.upper() == "BEGIN IMMEDIATE":
             statement = "BEGIN"
-        statement = re.sub(r"\\bINTEGER\\s+PRIMARY\\s+KEY\\s+AUTOINCREMENT\\b", "BIGSERIAL PRIMARY KEY", statement, flags=re.I)
-        ignore_insert = bool(re.match(r"INSERT\\s+OR\\s+IGNORE\\s+INTO\\s+", statement, flags=re.I))
+        statement = re.sub(r"\bINTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b", "BIGSERIAL PRIMARY KEY", statement, flags=re.I)
+        ignore_insert = bool(re.match(r"INSERT\s+OR\s+IGNORE\s+INTO\s+", statement, flags=re.I))
         if ignore_insert:
-            statement = re.sub(r"^INSERT\\s+OR\\s+IGNORE\\s+INTO", "INSERT INTO", statement, flags=re.I)
+            statement = re.sub(r"^INSERT\s+OR\s+IGNORE\s+INTO", "INSERT INTO", statement, flags=re.I)
             statement += " ON CONFLICT DO NOTHING"
         # These tables use generated integer IDs and the application reads
         # cursor.lastrowid after inserts, matching SQLite's existing contract.
-        match = re.match(r"INSERT\\s+INTO\\s+(trades|monitoring_events|thesis_reassessments|thesis_alerts)\\b", statement, flags=re.I)
-        if match and not re.search(r"\\bRETURNING\\b", statement, flags=re.I):
+        match = re.match(r"INSERT\s+INTO\s+(trades|monitoring_events|thesis_reassessments|thesis_alerts)\b", statement, flags=re.I)
+        if match and not re.search(r"\bRETURNING\b", statement, flags=re.I):
             statement += " RETURNING id"
         statement = statement.replace("?", "%s")
         cursor = self._connection.execute(statement, params)
