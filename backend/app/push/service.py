@@ -70,7 +70,7 @@ def remove_subscription(endpoint: str) -> int:
         conn.commit()
         return int(conn.execute("SELECT COUNT(*) FROM push_subscriptions").fetchone()[0])
 
-def deliver_monitoring_event(conn: sqlite3.Connection, event_id: int) -> dict[str, Any]:
+def deliver_monitoring_event(conn: Connection, event_id: int) -> dict[str, Any]:
     _ensure_tables(conn)
     row = conn.execute("SELECT * FROM monitoring_events WHERE id=?", (event_id,)).fetchone()
     if row is None:
