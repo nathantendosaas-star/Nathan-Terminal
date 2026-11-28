@@ -1,1 +1,10 @@
-node_modules/\n.venv/\n__pycache__/\n*.py[cod]\n*.sqlite3\n.env\n.env.*\n!.env.*.example\ndist/\n
+node_modules/
+.venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+.env
+.env.*
+!.env.example
+!.env.*.example
+dist/
