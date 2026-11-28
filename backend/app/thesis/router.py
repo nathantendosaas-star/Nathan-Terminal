@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/v1/thesis", tags=["trade thesis"])
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 RSS_URL = "https://news.google.com/rss/search"
 ALLOWED_STATUSES = {"VALID", "WEAKENED", "INVALIDATED", "NEEDS_REVIEW"}
-MAX_NEWS_ITEMS = 12
+MAX_NEWS_ITEMS = 12\nINTERVAL_MAX_AGE_SECONDS = {"1m": 120, "3m": 360, "5m": 600, "15m": 1800, "30m": 3600, "1h": 7200, "2h": 14400, "4h": 28800, "6h": 43200, "8h": 57600, "12h": 86400, "1d": 259200, "1w": 1814400, "1M": 7776000}
 
 
 def _connect():
@@ -194,14 +194,14 @@ async def reassess_trade_thesis(trade_id: int, request: ReassessmentRequest):
         raise HTTPException(status_code=422, detail="At least 30 real candles are required for reassessment.")
     latest = candles[-1]
     try:
-        candle_time = datetime.fromisoformat(str(latest["close_time"]).replace("Z", "+00:00"))
+        candle_time = datetime.fromisoformat(str(latest["time"]).replace("Z", "+00:00"))
         if candle_time.tzinfo is None:
             raise ValueError("naive timestamp")
         age = (datetime.now(timezone.utc) - candle_time.astimezone(timezone.utc)).total_seconds()
     except (KeyError, TypeError, ValueError, OverflowError) as exc:
         raise HTTPException(status_code=422, detail="Latest candle has no valid timezone-aware close timestamp.") from exc
-    freshness_limit = int(os.getenv("THESIS_MAX_CANDLE_AGE_SECONDS", "7200"))
-    if age < -300 or age > freshness_limit:
+    freshness_limit = max(int(os.getenv("THESIS_MAX_CANDLE_AGE_SECONDS", "7200")), INTERVAL_MAX_AGE_SECONDS.get(request.interval, 7200))
+    if age < -60 or age > freshness_limit:
         raise HTTPException(status_code=422, detail="Latest market candle is stale or from the future. Refresh evidence before reassessment.")
     technical = calculate_technical_analysis(candles)
     news = await _fetch_news(trade["symbol"]) if request.include_news else []
