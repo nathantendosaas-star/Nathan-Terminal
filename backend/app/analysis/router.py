@@ -75,9 +75,7 @@ async def analyze_market(request: AnalysisRequest) -> dict:
         symbol = request.symbol.upper().replace("/", "").replace("-", "")
     technical = calculate_technical_analysis(candles)
     prompt = build_analysis_prompt(symbol, request.interval, candles, technical, request.question.strip())
-    model = get_setting("gemini_model", os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)).strip()
-    if model not in GEMINI_MODELS:
-        model = DEFAULT_GEMINI_MODEL
+    model = get_active_model()
     url = f"{GEMINI_BASE_URL}/{model}:generateContent"
     payload = {"contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.25, "maxOutputTokens": 1800}}
     try:
