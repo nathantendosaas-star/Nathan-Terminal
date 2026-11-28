@@ -13,7 +13,7 @@ A personal financial intelligence and trading analysis terminal combining live m
 - [x] Deterministic risk validation and manual trade journal
 - [x] Google News RSS aggregation and search
 - [x] Snapshot-driven trade monitoring with persisted, deduplicated stop-loss / take-profit alerts
-- [x] Optional Telegram alert delivery with retry tracking
+- [x] Optional Telegram alert delivery with retry tracking\n- [x] Gemini trade-thesis reassessment with evidence history and deduplicated alerts
 
 ## Run locally
 
@@ -86,7 +86,7 @@ Set `GEMINI_API_KEY` on the backend to enable the optional research analyst. The
 - Stop-loss / take-profit events are deduplicated per trade and event type. Telegram delivery is optional: configure `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. Failed or not-configured deliveries can be retried, with a five-attempt cap.
 - Monitoring never closes trades, edits plans, or submits broker orders. A touched level is an alert for manual review, not proof of execution or a guaranteed fill.
 
-## Architecture
+## Thesis reassessment\n\nThe Thesis Review workspace reassesses open trade theses against fresh provider candles, technical indicators, and available Google News headlines. It preserves the original thesis and analysis, records each assessment, and alerts on weakened or invalidated theses. See [backend/README.md](backend/README.md#gemini-trade-thesis-reassessment) for API details and evidence freshness rules. AI review never changes risk approval or executes trades.\n\n## Architecture
 
 - **Frontend:** React, TypeScript, Vite, lightweight-charts, Nginx
 - **Backend:** Python, FastAPI, Pydantic, httpx
