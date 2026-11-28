@@ -27,7 +27,7 @@ def _ensure_tables(conn: Connection) -> None:
     conn.commit()
 
 
-def _connect() -> sqlite3.Connection:
+def _connect() -> Connection:
     conn = _trading_connect()
     _ensure_tables(conn)
     return conn
