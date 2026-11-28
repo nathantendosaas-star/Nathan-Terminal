@@ -32,7 +32,7 @@ export default function ServiceStatusPanel() {
       { name: "Backend API", state: backend.status === "fulfilled" ? "online" : "unavailable", detail: backend.status === "fulfilled" ? `Healthy · ${backend.value.version ?? "API responding"}` : backend.reason instanceof Error ? backend.reason.message : "Health check failed" },
       { name: "Supabase PostgreSQL", state: database.status === "fulfilled" ? "online" : "unavailable", detail: database.status === "fulfilled" ? "Database-backed session endpoint responded" : database.reason instanceof Error ? database.reason.message : "Database check failed" },
       { name: "Gemini", state: gemini.status === "fulfilled" ? (gemini.value.configured ? "configured" : "not-configured") : "error", detail: gemini.status === "fulfilled" ? (gemini.value.configured ? `API key configured · ${gemini.value.model}` : "GEMINI_API_KEY is not configured") : "Gemini status endpoint unavailable" },
-      { name: "Kronos-mini", state: kronos.status === "fulfilled" ? (kronos.value.available ? "online" : "unavailable") : "error", detail: kronos.status === "fulfilled" ? (kronos.value.available ? "Forecast runtime available" : kronos.value.reason || kronos.value.message || "Forecast runtime not available") : "Kronos status endpoint unavailable" },
+      { name: "Kronos-mini", state: kronos.status === "fulfilled" ? (kronos.value.loaded ? "online" : "unavailable") : "error", detail: kronos.status === "fulfilled" ? (kronos.value.loaded ? `Loaded · ${kronos.value.model} · ${kronos.value.device || "device unknown"}` : kronos.value.error || "Model not loaded; optional runtime is not currently active") : "Kronos status endpoint unavailable" },
     ];
     setServices(next);
     setCheckedAt(new Date().toLocaleTimeString());
