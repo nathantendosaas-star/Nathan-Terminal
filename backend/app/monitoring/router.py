@@ -13,17 +13,17 @@ import httpx
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from app.trading.router import _connect as _trading_connect
+
 router = APIRouter(prefix="/api/v1/monitoring", tags=["monitoring"])
 DB_PATH = os.getenv("TRADING_DB_PATH", "data/trade_desk.sqlite3")
 MAX_SNAPSHOT_AGE_SECONDS = int(os.getenv("MONITORING_MAX_SNAPSHOT_AGE_SECONDS", "300"))
 
 
 def _connect():
-    folder = os.path.dirname(DB_PATH)
-    if folder:
-        os.makedirs(folder, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=10)
-    conn.row_factory = sqlite3.Row
+    # Reuse the trade desk connection initializer so a fresh database has its
+    # settings, instruments and trades tables before monitoring queries run.
+    conn = _trading_connect()
     conn.execute("""CREATE TABLE IF NOT EXISTS monitoring_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         trade_id INTEGER NOT NULL,
@@ -173,8 +173,8 @@ def retry_delivery(event_id: int):
         row = conn.execute("SELECT * FROM monitoring_events WHERE id=?", (event_id,)).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="Monitoring event not found.")
-        if row["delivery_status"] != "failed":
-            raise HTTPException(status_code=409, detail="Only failed Telegram deliveries can be retried.")
+        if row["delivery_status"] not in {"failed", "not_configured"}:
+            raise HTTPException(status_code=409, detail="Only failed or not-configured Telegram deliveries can be retried.")
         if row["delivery_attempts"] >= 5:
             raise HTTPException(status_code=429, detail="Delivery retry limit reached.")
         return _send_and_record(conn, event_id)
