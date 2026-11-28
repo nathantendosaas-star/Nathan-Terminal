@@ -17,7 +17,7 @@ class RiskEngineTests(unittest.TestCase):
         self.assertEqual(result["planned_risk_amount"], 10)
 
     def test_rejects_risk_above_budget(self):
-        plan = {"symbol": "BTCUSDT", "direction": "LONG", "entry_price": 100, "stop_loss": 95, "take_profit": 110, "quantity": 3}
+        plan = {"symbol": "BTCUSDT", "direction": "LONG", "entry_price": 100, "stop_loss": 95, "take_profit": 110, "quantity": 30}
         result = calculate_plan(plan, self.settings, self.instrument, 0, 0, 0)
         self.assertEqual(result["status"], "REJECTED")
 
