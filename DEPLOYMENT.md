@@ -40,3 +40,12 @@ Sessions remain signed bearer tokens with a 12-hour lifetime and are stored in t
 ## Gemini model selection
 
 Set `GEMINI_API_KEY` only in the backend's Render environment. The default model is `gemini-3.8-flash`; the AI Analyst workspace lets you switch to `gemini-3.6-flash`. The selected model is saved in the backend's persistent SQLite settings and is used for subsequent analysis requests. Never place the Gemini API key in Vercel frontend variables.
+
+
+## PWA phone notifications
+
+The frontend is installable as a PWA and uses browser Web Push. Serve it over HTTPS (localhost is supported for development). Set VAPID_SUBJECT to a valid mailto: or HTTPS contact identity. The backend creates a VAPID keypair automatically and stores the private key in the persistent SQLite database; do not copy it into Vercel or the frontend.
+
+On Android, open the HTTPS terminal in Chrome, choose Install app or Add to Home screen, launch the installed app, open Monitoring, and choose Enable phone notifications. On iOS, add the app to the Home Screen first, then enable notifications from the installed web app (iOS 16.4 or later). Grant browser notification permission. Repeat on each device you want to receive alerts.
+
+Push subscriptions and delivery history are stored in the backend's persistent trade database. Keep the Render persistent disk mounted across deploys. A browser permission prompt can be declined or blocked in OS/site settings; the app will show that state. Web Push is best-effort and is not a guarantee of immediate delivery.

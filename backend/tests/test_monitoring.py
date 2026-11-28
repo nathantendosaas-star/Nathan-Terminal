@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.trading import router as trading
 from app.monitoring import router as monitoring
+from app.push import service as push_service
 
 
 class MonitoringTests(unittest.TestCase):
@@ -72,6 +73,80 @@ class MonitoringTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json()["automatic_execution"])
         self.assertEqual(response.json()["mode"], "snapshot_driven")
+
+    def test_push_public_key_and_subscription_are_persisted(self):
+        key = self.client.get("/api/v1/push/public-key")
+        self.assertEqual(key.status_code, 200)
+        self.assertGreater(len(key.json()["public_key"]), 60)
+        body = {
+            "endpoint": "https://push.example.test/subscription/one",
+            "keys": {"p256dh": "p" * 65, "auth": "a" * 24},
+            "device_name": "Android phone",
+        }
+        saved = self.client.post("/api/v1/push/subscribe", json=body)
+        self.assertEqual(saved.status_code, 200, saved.text)
+        self.assertEqual(saved.json()["active_devices"], 1)
+        status = self.client.get("/api/v1/push/status")
+        self.assertTrue(status.json()["enabled"])
+        self.assertEqual(status.json()["active_devices"], 1)
+        removed = self.client.post("/api/v1/push/unsubscribe", json={"endpoint": body["endpoint"]})
+        self.assertEqual(removed.json()["active_devices"], 0)
+
+    def test_monitoring_event_is_delivered_to_registered_device(self):
+        self.client.post("/api/v1/push/subscribe", json={
+            "endpoint": "https://push.example.test/subscription/deliver",
+            "keys": {"p256dh": "p" * 65, "auth": "a" * 24},
+            "device_name": "Test phone",
+        })
+        payload = {
+            "symbol": "BTCUSDT", "current_price": 94, "source": "test",
+            "market_data_timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        with patch("app.push.service.webpush") as send:
+            response = self.client.post("/api/v1/monitoring/evaluate", json=payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["new_events"][0]["delivery_status"], "delivered")
+        self.assertEqual(send.call_count, 1)
+        self.assertIn("STOP LOSS", send.call_args.kwargs["data"].upper())
+
+    def test_failed_push_can_be_retried(self):
+        self.client.post("/api/v1/push/subscribe", json={
+            "endpoint": "https://push.example.test/subscription/retry",
+            "keys": {"p256dh": "p" * 65, "auth": "a" * 24},
+            "device_name": "Retry phone",
+        })
+        payload = {
+            "symbol": "BTCUSDT", "current_price": 94, "source": "test",
+            "market_data_timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        with patch("app.push.service.webpush", side_effect=RuntimeError("temporary")):
+            created = self.client.post("/api/v1/monitoring/evaluate", json=payload)
+        event = created.json()["new_events"][0]
+        self.assertEqual(event["delivery_status"], "failed")
+        with patch("app.push.service.webpush") as send:
+            retried = self.client.post(f"/api/v1/monitoring/events/{event['id']}/retry")
+        self.assertEqual(retried.status_code, 200)
+        self.assertEqual(retried.json()["delivery_status"], "delivered")
+        self.assertEqual(send.call_count, 1)
+
+    def test_expired_push_endpoint_is_removed(self):
+        self.client.post("/api/v1/push/subscribe", json={
+            "endpoint": "https://push.example.test/subscription/expired",
+            "keys": {"p256dh": "p" * 65, "auth": "a" * 24},
+            "device_name": "Expired phone",
+        })
+        from pywebpush import WebPushException
+        class GoneResponse:
+            status_code = 410
+        error = WebPushException("gone", response=GoneResponse())
+        payload = {
+            "symbol": "BTCUSDT", "current_price": 94, "source": "test",
+            "market_data_timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        with patch("app.push.service.webpush", side_effect=error):
+            response = self.client.post("/api/v1/monitoring/evaluate", json=payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/push/status").json()["active_devices"], 0)
 
 
 if __name__ == "__main__":
