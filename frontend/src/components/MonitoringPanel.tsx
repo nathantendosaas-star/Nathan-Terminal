@@ -1,10 +1,10 @@
+import { useEffect, useState } from "react";
+
 function decodeVapidKey(value: string): Uint8Array {
   const padding = "=".repeat((4 - value.length % 4) % 4);
   const raw = atob((value + padding).replace(/-/g, "+").replace(/_/g, "/"));
   return Uint8Array.from(raw, character => character.charCodeAt(0));
 }
-
-import { useEffect, useState } from "react";
 
 type Props = { symbol: string; price: number | null; timestamp: string | null; source: string };
 type Status = { mode: string; open_trades: number; events: number; failed_deliveries: number; push_enabled: boolean; push_devices: number; automatic_execution: boolean };
