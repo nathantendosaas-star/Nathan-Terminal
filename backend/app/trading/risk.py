@@ -6,8 +6,8 @@ from typing import Any
 
 
 def floor_to_step(value: float, step: float) -> float:
-    if step <= 0:
-        raise ValueError("Quantity step must be positive.")
+    if not math.isfinite(value) or not math.isfinite(step) or step <= 0:
+        raise ValueError("Quantity and step must be finite; step must be positive.")
     return math.floor((value + 1e-12) / step) * step
 
 
@@ -24,14 +24,20 @@ def calculate_plan(plan: dict[str, Any], settings: dict[str, Any], instrument: d
     multiplier = float(instrument["contract_multiplier"])
     step = float(instrument["quantity_step"])
     minimum = float(instrument["minimum_quantity"])
-    if multiplier <= 0 or step <= 0 or minimum < 0:
-        return {"status": "NEEDS_REVIEW", "reasons": ["Instrument specification is invalid; verify contract multiplier and broker quantity constraints."]}
+    if not all(math.isfinite(value) for value in (multiplier, step, minimum)) or multiplier <= 0 or step <= 0 or minimum < 0:
+        return {"status": "NEEDS_REVIEW", "reasons": ["Instrument specification is invalid; verify finite contract multiplier and broker quantity constraints."]}
+
+    equity = float(settings["account_equity"])
+    risk_pct = float(settings["risk_per_trade_pct"])
+    daily_pct = float(settings["maximum_daily_loss_pct"])
+    maximum_positions = int(settings["maximum_simultaneous_positions"])
+    minimum_rr = float(settings["minimum_risk_reward"])
+    if not all(math.isfinite(value) for value in (equity, risk_pct, daily_pct, minimum_rr)) or equity <= 0 or risk_pct <= 0 or daily_pct <= 0 or minimum_rr <= 0 or maximum_positions < 1:
+        return {"status": "NEEDS_REVIEW", "reasons": ["Risk settings are invalid; verify account equity, risk limits and position limits."]}
 
     distance_risk = abs(entry - stop) * multiplier
     distance_reward = abs(target - entry) * multiplier
     rr = distance_reward / distance_risk if distance_risk else 0
-    equity = float(settings["account_equity"])
-    risk_pct = float(settings["risk_per_trade_pct"])
     risk_budget = equity * risk_pct / 100
     suggested_qty = floor_to_step(risk_budget / distance_risk, step) if distance_risk else 0
     suggested_risk = suggested_qty * distance_risk
@@ -39,9 +45,9 @@ def calculate_plan(plan: dict[str, Any], settings: dict[str, Any], instrument: d
     reasons: list[str] = []
     review: list[str] = []
 
-    if rr < float(settings["minimum_risk_reward"]):
-        reasons.append(f"Risk/reward {rr:.2f}:1 is below the configured minimum of {settings['minimum_risk_reward']:.2f}:1.")
-    if open_positions >= int(settings["maximum_simultaneous_positions"]):
+    if rr < minimum_rr:
+        reasons.append(f"Risk/reward {rr:.2f}:1 is below the configured minimum of {minimum_rr:.2f}:1.")
+    if open_positions >= maximum_positions:
         reasons.append("Maximum simultaneous open positions has been reached.")
     if suggested_qty < minimum or suggested_qty <= 0:
         review.append("Risk budget produces a quantity below the instrument minimum; no valid size can be suggested.")
@@ -61,7 +67,7 @@ def calculate_plan(plan: dict[str, Any], settings: dict[str, Any], instrument: d
                 reasons.append(f"Planned quantity risks {actual_risk:.2f}, above the per-trade budget {risk_budget:.2f}.")
     new_trade_risk = risk_budget if qty is None or not math.isfinite(float(qty)) or float(qty) <= 0 else float(qty) * distance_risk
     projected_daily_loss = max(0.0, -daily_realized_pnl) + open_risk + new_trade_risk
-    daily_limit = equity * float(settings["maximum_daily_loss_pct"]) / 100
+    daily_limit = equity * daily_pct / 100
     if projected_daily_loss > daily_limit + 1e-9:
         reasons.append(f"Projected daily loss exposure {projected_daily_loss:.2f} exceeds the configured daily limit {daily_limit:.2f}.")
     if reasons:
