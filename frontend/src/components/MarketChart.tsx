@@ -31,7 +31,7 @@ export default function MarketChart({ candles, technical }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ChartSeries | null>(null);
-  const priceLinesRef = useRef<Array<{ applyOptions: (options: { price: number }) => void }>>([]);
+  const priceLinesRef = useRef<IPriceLine[]>([]);
 
   useEffect(() => {
     const element = host.current;
@@ -88,9 +88,16 @@ export default function MarketChart({ candles, technical }: Props) {
     }));
     series.volume.setData(volumeData);
     chart.timeScale().fitContent();
-    if (technical?.support) series.candles.createPriceLine({ price: technical.support.price, color: "#4f9ed1", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "SUP" });
-    if (technical?.resistance) series.candles.createPriceLine({ price: technical.resistance.price, color: "#d6a65a", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "RES" });
-  }, [candles, technical]);
+  }, [candles]);
+
+  useEffect(() => {
+    const series = seriesRef.current;
+    if (!series) return;
+    priceLinesRef.current.forEach(line => series.candles.removePriceLine(line));
+    priceLinesRef.current = [];
+    if (technical?.support) priceLinesRef.current.push(series.candles.createPriceLine({ price: technical.support.price, color: "#4f9ed1", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "SUP" }));
+    if (technical?.resistance) priceLinesRef.current.push(series.candles.createPriceLine({ price: technical.resistance.price, color: "#d6a65a", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "RES" }));
+  }, [technical]);
 
   return <div className="market-chart" ref={host} aria-label="Interactive candlestick chart with live OHLCV and volume" />;
 }
