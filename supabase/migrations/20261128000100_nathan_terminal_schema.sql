@@ -1,0 +1,83 @@
+-- Nathan Terminal application schema.
+-- The FastAPI backend connects with the postgres role and search_path=app,public.
+-- No tables are exposed through the Supabase Data API.
+CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION postgres;
+REVOKE ALL ON SCHEMA app FROM PUBLIC;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    REVOKE ALL ON SCHEMA app FROM anon;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    REVOKE ALL ON SCHEMA app FROM authenticated;
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS app.settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  account_equity DOUBLE PRECISION NOT NULL,
+  account_currency TEXT NOT NULL,
+  risk_per_trade_pct DOUBLE PRECISION NOT NULL,
+  maximum_daily_loss_pct DOUBLE PRECISION NOT NULL,
+  maximum_simultaneous_positions INTEGER NOT NULL,
+  minimum_risk_reward DOUBLE PRECISION NOT NULL,
+  maximum_market_data_age_seconds INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS app.instruments (
+  symbol TEXT PRIMARY KEY, contract_multiplier DOUBLE PRECISION NOT NULL,
+  quantity_step DOUBLE PRECISION NOT NULL, minimum_quantity DOUBLE PRECISION NOT NULL,
+  quote_currency TEXT NOT NULL, specification_note TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS app.trades (
+  id BIGSERIAL PRIMARY KEY, symbol TEXT NOT NULL, direction TEXT NOT NULL,
+  entry_price DOUBLE PRECISION NOT NULL, stop_loss DOUBLE PRECISION NOT NULL,
+  take_profit DOUBLE PRECISION NOT NULL, quantity DOUBLE PRECISION NOT NULL,
+  contract_multiplier DOUBLE PRECISION NOT NULL DEFAULT 1,
+  risk_amount DOUBLE PRECISION NOT NULL, risk_reward DOUBLE PRECISION NOT NULL,
+  status TEXT NOT NULL, opened_at TEXT NOT NULL, closed_at TEXT,
+  exit_price DOUBLE PRECISION, realized_pnl DOUBLE PRECISION
+);
+CREATE TABLE IF NOT EXISTS app.app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS app.monitoring_events (
+  id BIGSERIAL PRIMARY KEY, trade_id BIGINT NOT NULL, symbol TEXT NOT NULL,
+  event_type TEXT NOT NULL, observed_price DOUBLE PRECISION NOT NULL,
+  source TEXT NOT NULL, market_data_timestamp TEXT NOT NULL,
+  delivery_status TEXT NOT NULL DEFAULT 'pending', delivery_attempts INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT, created_at TEXT NOT NULL, delivered_at TEXT,
+  UNIQUE(trade_id, event_type)
+);
+CREATE TABLE IF NOT EXISTS app.push_subscriptions (
+  endpoint_hash TEXT PRIMARY KEY, endpoint TEXT NOT NULL UNIQUE, p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL, device_name TEXT NOT NULL DEFAULT 'This device',
+  created_at TEXT NOT NULL, last_seen_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS app.monitoring_push_deliveries (
+  event_id BIGINT NOT NULL, endpoint_hash TEXT NOT NULL, status TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT, delivered_at TEXT,
+  PRIMARY KEY(event_id, endpoint_hash)
+);
+CREATE TABLE IF NOT EXISTS app.market_sessions (
+  id TEXT PRIMARY KEY, status TEXT NOT NULL CHECK(status IN ('ACTIVE','STOPPED','EXPIRED')),
+  started_at TEXT NOT NULL, expires_at TEXT NOT NULL, ended_at TEXT,
+  interval TEXT NOT NULL, symbols_json TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS market_sessions_one_active
+  ON app.market_sessions ((status)) WHERE status = 'ACTIVE';
+CREATE TABLE IF NOT EXISTS app.trade_theses (
+  trade_id BIGINT PRIMARY KEY, original_thesis TEXT NOT NULL,
+  original_analysis TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS app.thesis_reassessments (
+  id BIGSERIAL PRIMARY KEY, trade_id BIGINT NOT NULL, status TEXT NOT NULL,
+  assessment TEXT NOT NULL, evidence_json TEXT NOT NULL, changes_json TEXT NOT NULL,
+  model TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS app.thesis_alerts (
+  id BIGSERIAL PRIMARY KEY, trade_id BIGINT NOT NULL, status TEXT NOT NULL,
+  reassessment_id BIGINT NOT NULL, monitoring_event_id BIGINT,
+  created_at TEXT NOT NULL, UNIQUE(trade_id, status)
+);
+INSERT INTO app.settings (id, account_equity, account_currency, risk_per_trade_pct,
+  maximum_daily_loss_pct, maximum_simultaneous_positions, minimum_risk_reward,
+  maximum_market_data_age_seconds)
+VALUES (1, 10000, 'USD', 1, 3, 3, 2, 300)
+ON CONFLICT (id) DO NOTHING;
