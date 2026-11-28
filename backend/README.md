@@ -87,3 +87,16 @@ The trade desk is deliberately manual-only. It does not connect to a broker, sub
 - The local SQLite journal is stored at `data/trade_desk.sqlite3` by default. Set `TRADING_DB_PATH` to a persistent mounted path in deployment; ephemeral hosting filesystems may lose journal data.
 - P&L journal calculations are gross price-difference calculations and do not include commissions, spread, funding, swaps, slippage, taxes, or currency conversion. Validate contract specs and quote/account currency compatibility yourself.
 - This tool is a decision-support calculator, not financial advice. It does not guarantee fills, stops, or realized loss limits.
+
+
+## Gemini Trade Thesis Reassessment
+
+The Thesis Review workspace compares an open manual trade against its immutable original thesis and original Gemini analysis. On each user-requested reassessment the backend fetches up to 200 real candles from Binance or Twelve Data, recalculates technical indicators, and retrieves relevant Google News RSS headlines when enabled. An optional Kronos forecast context can be supplied by API clients; it is treated as uncertain evidence, not ground truth.
+
+- `POST /api/v1/thesis/trades/{trade_id}/reassess` — reassess an open trade. The first request must include `original_thesis` and `original_analysis`; both are saved as the immutable baseline. Subsequent requests reuse that baseline.
+- `GET /api/v1/thesis/trades/{trade_id}/history` — retrieve the baseline, reassessment history, evidence snapshots, and deduplicated alerts.
+- Gemini must return structured JSON with status `VALID`, `WEAKENED`, `INVALIDATED`, or `NEEDS_REVIEW`, plus assessment, changes, supporting/contradicting/missing evidence, and confidence.
+- Candle timestamps are checked for freshness using `THESIS_MAX_CANDLE_AGE_SECONDS` (default 7200 seconds). Stale or malformed candle evidence is rejected before Gemini is called. If the requested news feed is unavailable, the result is downgraded to `NEEDS_REVIEW`.
+- `WEAKENED` and `INVALIDATED` create in-app monitoring events and use the existing optional Telegram delivery pipeline. Alerts are deduplicated per trade and status.
+- Reassessment is on demand, not a background watcher. It never modifies a trade plan, closes a trade, changes risk approval, or submits broker orders. A Gemini status is not a risk-engine outcome.
+- Gemini output and news are untrusted research context. Verify cited sources independently; absence of headlines is not evidence that no event exists.
