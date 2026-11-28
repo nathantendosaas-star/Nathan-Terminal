@@ -7,6 +7,7 @@ import {
 import type { Candle, TechnicalAnalysis } from "../lib/marketData";
 
 type Props = { candles: Candle[]; technical: TechnicalAnalysis | null };
+type PriceLine = ReturnType<ISeriesApi<"Candlestick">["createPriceLine"]>;
 type ChartSeries = {
   candles: ISeriesApi<"Candlestick">;
   ema20: ISeriesApi<"Line">;
@@ -31,7 +32,7 @@ export default function MarketChart({ candles, technical }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ChartSeries | null>(null);
-  const priceLinesRef = useRef<IPriceLine[]>([]);
+  const priceLinesRef = useRef<PriceLine[]>([]);
 
   useEffect(() => {
     const element = host.current;
