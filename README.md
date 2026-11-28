@@ -11,7 +11,9 @@ A personal financial intelligence and trading analysis terminal combining live m
 - [x] Optional Kronos-mini candle forecasting
 - [x] Optional Gemini AI research analyst
 - [x] Deterministic risk validation and manual trade journal
-- [ ] News aggregation, monitoring, and Telegram alerts
+- [x] Google News RSS aggregation and search
+- [x] Snapshot-driven trade monitoring with persisted, deduplicated stop-loss / take-profit alerts
+- [x] Optional Telegram alert delivery with retry tracking
 
 ## Run locally
 
@@ -74,6 +76,15 @@ The forecasting runtime is optional and intentionally excluded from the default 
 ### Gemini AI Analyst
 
 Set `GEMINI_API_KEY` on the backend to enable the optional research analyst. The key remains server-side. `GEMINI_MODEL` defaults to `gemini-2.5-flash`. Provider quota, latency, and availability are external dependencies.
+
+## News and monitoring
+
+- `GET /api/v1/news?q=bitcoin&limit=20` retrieves headlines through Google News RSS. Provider availability and source links remain external dependencies.
+- `GET /api/v1/monitoring/status` and `GET /api/v1/monitoring/events` expose monitoring status and persisted events.
+- `POST /api/v1/monitoring/evaluate` evaluates a timestamped market-price snapshot against open manual trades. Snapshots older than `MONITORING_MAX_SNAPSHOT_AGE_SECONDS` are rejected.
+- The Monitoring workspace checks the latest fetched candle only when the user requests an evaluation. This is snapshot-driven, not a continuously running background price watcher.
+- Stop-loss / take-profit events are deduplicated per trade and event type. Telegram delivery is optional: configure `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. Failed or not-configured deliveries can be retried, with a five-attempt cap.
+- Monitoring never closes trades, edits plans, or submits broker orders. A touched level is an alert for manual review, not proof of execution or a guaranteed fill.
 
 ## Architecture
 
