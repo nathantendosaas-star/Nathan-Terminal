@@ -46,7 +46,7 @@ class MonitoringTests(unittest.TestCase):
             "symbol": "BTCUSDT", "current_price": 94, "source": "test",
             "market_data_timestamp": datetime.now(timezone.utc).isoformat()
         }
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"VAPID_SUBJECT": "mailto:test@example.com"}):
             first = self.client.post("/api/v1/monitoring/evaluate", json=payload)
             second = self.client.post("/api/v1/monitoring/evaluate", json=payload)
         self.assertEqual(first.status_code, 200)
