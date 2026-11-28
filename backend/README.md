@@ -8,12 +8,14 @@ FastAPI service for market data adapters, forecasting orchestration, AI analysis
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
 pip install -r requirements.txt
+export DATABASE_URL='postgresql://...'
+export DATABASE_SCHEMA=app
 uvicorn app.main:app --reload --port 8000
 ```
 
 ## Tests
 
-From the `backend` directory, run the standard-library unit tests with:
+From the `backend` directory, set `DATABASE_URL` to a disposable PostgreSQL 17 database, then run:
 
 ```bash
 python -m unittest discover -s tests -v
@@ -31,6 +33,19 @@ The candle response also includes a deterministic technical-analysis snapshot: W
 
 The frontend's local default API origin is `http://localhost:8000`. Configure its `VITE_API_BASE_URL` environment variable when the API is hosted elsewhere.
 
+
+## PostgreSQL / Supabase storage
+
+All application persistence uses PostgreSQL through psycopg 3. The backend connects directly to Supabase; the browser never receives a database credential or service-role key.
+
+1. Apply `backend/migrations/001_initial_postgresql.sql` to the Supabase project (SQL Editor is suitable for the initial setup).
+2. Set `DATABASE_URL` on the backend to the Supabase **Session Pooler** connection string. Keep the password URL-encoded if it contains reserved URL characters.
+3. Set `DATABASE_SCHEMA=app`. The backend also ensures this private schema exists and sets it as its search path.
+4. Never set `DATABASE_URL` or any Supabase secret as a `VITE_*` frontend variable.
+
+The application uses a private `app` schema rather than the browser-facing `public` schema. The schema migration creates all persistent tables and a partial unique index that enforces one active market session. The API startup also runs idempotent `CREATE TABLE IF NOT EXISTS` checks so a fresh database can initialize itself.
+
+For local development and tests, use a disposable PostgreSQL database. The CI workflow provisions PostgreSQL 17 and runs backend tests against it. SQLite is no longer a supported application storage backend.
 
 ## Kronos-mini forecasting
 
@@ -58,7 +73,7 @@ The model is loaded only on demand. If the upstream source or model weights are 
 The optional AI Analyst uses Google's Gemini API from the backend. The API key is never sent to the browser.
 
 1. Create a Gemini API key in Google AI Studio.
-2. Set `GEMINI_API_KEY` in the backend environment (see `.env.gemini.example`). Optionally set `GEMINI_MODEL`; the default is `gemini-2.5-flash`.
+2. Set `GEMINI_API_KEY` in the backend environment (see `.env.gemini.example`). Optionally set `GEMINI_MODEL`; the default is `gemini-3.8-flash`.
 3. Restart the backend.
 
 - `GET /api/v1/analysis/status` — reports whether Gemini is configured and the selected model.
@@ -84,7 +99,7 @@ The trade desk is deliberately manual-only. It does not connect to a broker, sub
 - Position sizing uses configured account equity, risk percentage, contract multiplier, quantity step, and minimum quantity; suggested quantities are rounded down.
 - Validates direction-specific stop/target placement, risk/reward, per-trade risk budget, daily loss exposure, maximum simultaneous positions, market quote freshness, and conflicting opposite-direction positions.
 - Outcomes are `APPROVED`, `REJECTED`, or `NEEDS_REVIEW`. Missing instrument specifications or quote context require review; hard rule violations reject the plan.
-- The local SQLite journal is stored at `data/trade_desk.sqlite3` by default. Set `TRADING_DB_PATH` to a persistent mounted path in deployment; ephemeral hosting filesystems may lose journal data.
+- Trade settings, instruments, journal entries, authentication secrets, sessions, monitoring events, Web Push subscriptions, and thesis history are stored in Supabase PostgreSQL. Configure the backend-only `DATABASE_URL` with the Supabase Session Pooler connection string. The default private schema is `app`; do not expose it through the Supabase Data API.
 - P&L journal calculations are gross price-difference calculations and do not include commissions, spread, funding, swaps, slippage, taxes, or currency conversion. Validate contract specs and quote/account currency compatibility yourself.
 - This tool is a decision-support calculator, not financial advice. It does not guarantee fills, stops, or realized loss limits.
 
@@ -104,13 +119,13 @@ The Thesis Review workspace compares an open manual trade against its immutable 
 
 ## Session lifecycle
 
-The session API persists one active market session at a time in SQLite. A session has an immutable eight-hour maximum, an interval, and explicit symbol/provider subscriptions. The default subscription set is BTCUSDT, ETHUSDT, SOLUSDT (Binance public spot) and NVDA, AAPL, GOOGL (Twelve Data). Unknown or duplicate symbols are rejected.
+The session API persists one active market session at a time in PostgreSQL. A session has an immutable eight-hour maximum, an interval, and explicit symbol/provider subscriptions. The default subscription set is BTCUSDT, ETHUSDT, SOLUSDT (Binance public spot) and NVDA, AAPL, GOOGL (Twelve Data). Unknown or duplicate symbols are rejected.
 
 - `GET /api/v1/sessions/current` — returns the active session, marking it EXPIRED if its deadline has passed.
 - `POST /api/v1/sessions/start` — starts a session; returns 409 if another is active.
 - `POST /api/v1/sessions/{session_id}/stop` — idempotently stops a session.
 - `GET /api/v1/sessions/history` — returns the latest 50 sessions.
-- `SESSION_DB_PATH` controls the SQLite path; default is `data/sessions.sqlite3`. Compose mounts it under the existing persistent `trade_data` volume at `/data/market_sessions.sqlite3`.
+- Session records share the same PostgreSQL database and private `app` schema as the rest of the application.
 
 The frontend checks session status every 15 seconds and only runs its 60-second market candle refresh while the session is ACTIVE. Stop/expiry clears that interval and discards the current live candle view. The timeframe selector is locked for the duration of a session. This milestone does not introduce a backend WebSocket feed or background market worker; no server-side provider subscription is kept alive. Saved trades and their monitoring/thesis history use their existing persistent database and are unaffected by session stop/start.
 

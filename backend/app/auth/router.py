@@ -1,8 +1,8 @@
 """Single-owner password setup/login with persistent signed bearer sessions."""
 from __future__ import annotations
-import base64, hashlib, hmac, json, os, secrets, sqlite3, time
+import base64, hashlib, hmac, json, os, secrets, time
 from collections import defaultdict, deque
-from pathlib import Path
+from app.database import connect as _postgres_connect
 from threading import Lock
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -14,13 +14,12 @@ class PasswordRequest(BaseModel):
     password:str=Field(min_length=12,max_length=1024)
 class LoginRequest(BaseModel):
     password:str=Field(min_length=1,max_length=1024)
-def _db_path()->str:
-    return os.getenv("AUTH_DB_PATH") or os.getenv("TRADING_DB_PATH") or str(Path(__file__).resolve().parents[2]/"data"/"trade_desk.sqlite3")
-def _connect()->sqlite3.Connection:
-    path=_db_path();Path(path).parent.mkdir(parents=True,exist_ok=True)
-    connection=sqlite3.connect(path,timeout=15);connection.execute("PRAGMA busy_timeout=15000")
+def _connect():
+    connection = _postgres_connect()
     connection.execute("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+    connection.commit()
     return connection
+
 def get_setting(key:str,default:str="")->str:
     connection=_connect()
     try:

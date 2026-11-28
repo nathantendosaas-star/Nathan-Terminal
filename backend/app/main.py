@@ -31,6 +31,19 @@ app.include_router(sessions_router)
 app.include_router(auth_router)
 app.include_router(push_router)
 
+@app.on_event("startup")
+async def initialize_postgresql_storage():
+    # Create/upgrade the application's private schema before serving requests.
+    from app.trading.router import _connect as trading_connect
+    from app.monitoring.router import _connect as monitoring_connect
+    from app.sessions.router import _connect as sessions_connect
+    from app.thesis.router import _connect as thesis_connect
+    from app.push.service import _connect as push_connect
+    from app.auth.router import _connect as auth_connect
+    for initializer in (trading_connect, monitoring_connect, sessions_connect, thesis_connect, push_connect, auth_connect):
+        with initializer():
+            pass
+
 # Comma-separated origins support separate frontend domains in production.
 # Same-origin deployments through the included Nginx proxy do not need CORS.
 frontend_origins = [

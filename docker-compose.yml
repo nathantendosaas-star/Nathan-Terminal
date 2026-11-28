@@ -10,14 +10,12 @@ services:
       TWELVE_DATA_API_KEY: ${TWELVE_DATA_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
-      AUTH_DB_PATH: /data/trade_desk.sqlite3
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@example.com}
       MONITORING_MAX_SNAPSHOT_AGE_SECONDS: ${MONITORING_MAX_SNAPSHOT_AGE_SECONDS:-300}
-      TRADING_DB_PATH: /data/trade_desk.sqlite3
-      SESSION_DB_PATH: ${SESSION_DB_PATH:-/data/market_sessions.sqlite3}
+      DATABASE_URL: ${DATABASE_URL:-}
+      DATABASE_SCHEMA: ${DATABASE_SCHEMA:-app}
       HF_HOME: /models/huggingface
     volumes:
-      - trade_data:/data
       - model_cache:/models
     expose:
       - "8000"
@@ -47,5 +45,4 @@ services:
       retries: 3
 
 volumes:
-  trade_data:
   model_cache:

@@ -7,8 +7,7 @@ the persisted session is ACTIVE and is torn down on stop/expiry.
 from __future__ import annotations
 
 import json
-import os
-import sqlite3
+from app.database import connect as _postgres_connect, Connection, Row
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Literal
@@ -17,7 +16,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/v1/sessions", tags=["sessions"])
-DB_PATH = os.getenv("SESSION_DB_PATH", "data/sessions.sqlite3")
 MAX_SESSION_HOURS = 8
 DEFAULT_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "NVDA", "AAPL", "GOOGL"]
 SYMBOL_PROVIDERS = {
@@ -34,11 +32,8 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _connect() -> sqlite3.Connection:
-    os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=10)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
+def _connect():
+    conn = _postgres_connect()
     conn.execute("""
         CREATE TABLE IF NOT EXISTS market_sessions (
             id TEXT PRIMARY KEY,
@@ -50,11 +45,12 @@ def _connect() -> sqlite3.Connection:
             symbols_json TEXT NOT NULL
         )
     """)
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS one_active_market_session ON market_sessions (status) WHERE status='ACTIVE'")
     conn.commit()
     return conn
 
 
-def _expire_active(conn: sqlite3.Connection, now: datetime) -> None:
+def _expire_active(conn: Connection, now: datetime) -> None:
     conn.execute(
         "UPDATE market_sessions SET status='EXPIRED', ended_at=? "
         "WHERE status='ACTIVE' AND expires_at<=?",
@@ -62,7 +58,7 @@ def _expire_active(conn: sqlite3.Connection, now: datetime) -> None:
     )
 
 
-def _serialize(row: sqlite3.Row | None) -> dict | None:
+def _serialize(row: Row | None) -> dict | None:
     if row is None:
         return None
     return {

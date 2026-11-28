@@ -1,6 +1,7 @@
 """HTTP-level contract tests for the public API and manual Trade Desk."""
 import os
-import tempfile
+import uuid
+import psycopg
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch
@@ -13,16 +14,16 @@ from app.trading import router as trading_router
 
 class ApiContractTests(unittest.TestCase):
     def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.db_path = os.path.join(self.temp_dir.name, "trades.sqlite3")
-        self.db_patch = patch.object(trading_router, "DB_PATH", self.db_path)
-        self.db_patch.start()
+        self.schema = "test_" + uuid.uuid4().hex
+        self.schema_patch = patch.dict(os.environ, {"DATABASE_SCHEMA": self.schema})
+        self.schema_patch.start()
         self.client = TestClient(app)
 
     def tearDown(self):
         self.client.close()
-        self.db_patch.stop()
-        self.temp_dir.cleanup()
+        self.schema_patch.stop()
+        with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+            conn.execute('DROP SCHEMA IF EXISTS "' + self.schema + '" CASCADE')
 
     def instrument(self, symbol="BTCUSDT"):
         return self.client.put("/api/v1/trading/instruments", json={

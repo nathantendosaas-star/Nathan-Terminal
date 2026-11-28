@@ -1,8 +1,7 @@
 """Manual-only trade desk and deterministic risk engine."""
 from __future__ import annotations
 
-import os
-import sqlite3
+from app.database import connect as _postgres_connect
 from datetime import datetime, timezone
 from typing import Literal
 
@@ -12,23 +11,15 @@ from pydantic import BaseModel, Field
 from app.trading.risk import calculate_plan
 
 router = APIRouter(prefix="/api/v1/trading", tags=["trade desk"])
-DB_PATH = os.getenv("TRADING_DB_PATH", "data/trade_desk.sqlite3")
 DEFAULT_SETTINGS = {"account_equity": 10000.0, "account_currency": "USD", "risk_per_trade_pct": 1.0, "maximum_daily_loss_pct": 3.0, "maximum_simultaneous_positions": 3, "minimum_risk_reward": 2.0, "maximum_market_data_age_seconds": 300}
 
 
 def _connect():
-    folder = os.path.dirname(DB_PATH)
-    if folder:
-        os.makedirs(folder, exist_ok=True)
-    connection = sqlite3.connect(DB_PATH, timeout=10)
-    connection.row_factory = sqlite3.Row
+    connection = _postgres_connect()
     connection.execute("""CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), account_equity REAL NOT NULL, account_currency TEXT NOT NULL, risk_per_trade_pct REAL NOT NULL, maximum_daily_loss_pct REAL NOT NULL, maximum_simultaneous_positions INTEGER NOT NULL, minimum_risk_reward REAL NOT NULL, maximum_market_data_age_seconds INTEGER NOT NULL)""")
     connection.execute("""CREATE TABLE IF NOT EXISTS instruments (symbol TEXT PRIMARY KEY, contract_multiplier REAL NOT NULL, quantity_step REAL NOT NULL, minimum_quantity REAL NOT NULL, quote_currency TEXT NOT NULL, specification_note TEXT NOT NULL)""")
     connection.execute("""CREATE TABLE IF NOT EXISTS trades (id INTEGER PRIMARY KEY AUTOINCREMENT, symbol TEXT NOT NULL, direction TEXT NOT NULL, entry_price REAL NOT NULL, stop_loss REAL NOT NULL, take_profit REAL NOT NULL, quantity REAL NOT NULL, contract_multiplier REAL NOT NULL DEFAULT 1, risk_amount REAL NOT NULL, risk_reward REAL NOT NULL, status TEXT NOT NULL, opened_at TEXT NOT NULL, closed_at TEXT, exit_price REAL, realized_pnl REAL)""")
-    trade_columns = {row["name"] for row in connection.execute("PRAGMA table_info(trades)").fetchall()}
-    if "contract_multiplier" not in trade_columns:
-        connection.execute("ALTER TABLE trades ADD COLUMN contract_multiplier REAL NOT NULL DEFAULT 1")
-    connection.execute("INSERT OR IGNORE INTO settings (id, account_equity, account_currency, risk_per_trade_pct, maximum_daily_loss_pct, maximum_simultaneous_positions, minimum_risk_reward, maximum_market_data_age_seconds) VALUES (1,?,?,?,?,?,?,?)", tuple(DEFAULT_SETTINGS.values()))
+    connection.execute("INSERT INTO settings (id, account_equity, account_currency, risk_per_trade_pct, maximum_daily_loss_pct, maximum_simultaneous_positions, minimum_risk_reward, maximum_market_data_age_seconds) VALUES (1,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING", tuple(DEFAULT_SETTINGS.values()))
     connection.commit()
     return connection
 
@@ -154,6 +145,9 @@ def validate_plan(plan: TradePlan):
 @router.post("/trades")
 def register_trade(plan: TradePlan):
     with _connect() as conn:
+        # Serialize validation and registration so concurrent requests cannot
+        # both pass the same open-position and daily-risk limits.
+        conn.execute("BEGIN IMMEDIATE")
         result = _validate(conn, plan)
         if result["status"] != "APPROVED":
             raise HTTPException(status_code=409, detail={"validation": result, "message": "Trade not registered. Resolve all risk checks and explicitly submit again."})
@@ -177,6 +171,7 @@ def list_trades(status: Literal["OPEN", "CLOSED", "ALL"] = "ALL"):
 @router.post("/trades/{trade_id}/close")
 def close_trade(trade_id: int, payload: CloseTrade):
     with _connect() as conn:
+        conn.execute("BEGIN IMMEDIATE")
         row = conn.execute("SELECT * FROM trades WHERE id=?", (trade_id,)).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="Trade not found.")

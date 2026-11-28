@@ -1,19 +1,20 @@
 """Persistent Web Push subscriptions and delivery for the single-owner terminal."""
 from __future__ import annotations
-import hashlib, json, os, sqlite3
+import hashlib, json, os
 from datetime import datetime, timezone
 from typing import Any
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import NoEncryption, PrivateFormat
 from pywebpush import WebPushException, webpush
+from app.database import Connection
 from app.trading.router import _connect as _trading_connect
 
 def _b64url(value: bytes) -> str:
     import base64
     return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
 
-def _ensure_tables(conn: sqlite3.Connection) -> None:
+def _ensure_tables(conn: Connection) -> None:
     conn.execute("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     conn.execute("""CREATE TABLE IF NOT EXISTS push_subscriptions (
       endpoint_hash TEXT PRIMARY KEY, endpoint TEXT NOT NULL UNIQUE, p256dh TEXT NOT NULL,
@@ -26,7 +27,7 @@ def _ensure_tables(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def _connect() -> sqlite3.Connection:
+def _connect() -> Connection:
     conn = _trading_connect()
     _ensure_tables(conn)
     return conn
@@ -69,7 +70,7 @@ def remove_subscription(endpoint: str) -> int:
         conn.commit()
         return int(conn.execute("SELECT COUNT(*) FROM push_subscriptions").fetchone()[0])
 
-def deliver_monitoring_event(conn: sqlite3.Connection, event_id: int) -> dict[str, Any]:
+def deliver_monitoring_event(conn: Connection, event_id: int) -> dict[str, Any]:
     _ensure_tables(conn)
     row = conn.execute("SELECT * FROM monitoring_events WHERE id=?", (event_id,)).fetchone()
     if row is None:
