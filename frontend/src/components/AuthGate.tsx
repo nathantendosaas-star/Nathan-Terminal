@@ -28,7 +28,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     finally { setBusy(false); }
   };
   if (!ready) return <div className="auth-screen"><div className="auth-card">SECURELY CONNECTING TO NATHAN TERMINAL…</div></div>;
-  if (!required || sessionStorage.getItem("nt_access_token")) return <>{children}</>;
+  if (!required) return <>{children}</>;
+  if (sessionStorage.getItem("nt_access_token")) return <div className="auth-app">
+    <button className="auth-lock" onClick={() => { sessionStorage.removeItem("nt_access_token"); window.location.reload(); }}>Lock terminal</button>
+    {children}
+  </div>;
   return <div className="auth-screen"><form className="auth-card" onSubmit={submit}>
     <div className="auth-mark">N</div><div className="auth-kicker">PRIVATE WORKSPACE</div><h1>Nathan Terminal</h1>
     <p>Enter your password to access your personal market intelligence terminal.</p>
