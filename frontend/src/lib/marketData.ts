@@ -32,7 +32,8 @@ export type CandleResponse = {
   technical_analysis: TechnicalAnalysis;
 };
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+// Empty by default: Vite dev proxy and production Nginx route API requests same-origin.
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 export async function fetchCandles(
   symbol = "BTCUSDT",

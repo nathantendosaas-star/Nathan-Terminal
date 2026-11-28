@@ -1,23 +1,16 @@
 # Nathan Terminal
 
-A personal financial intelligence and trading analysis terminal combining market data, technical analysis, AI-assisted research, and candle forecasting.
+A personal financial intelligence and trading analysis terminal combining live market data, technical analysis, Kronos-mini forecasting, Gemini-assisted research, and a deterministic risk engine with a manual-only Trade Desk.
 
-## Current status
+## Current capabilities
 
-**Market-data foundation:** Binance crypto candles and Twelve Data traditional-market adapter.
-
-- [x] React + TypeScript + Vite frontend scaffold
-- [x] Dark terminal dashboard shell with overview, watchlist, and forecast/news placeholders
-- [x] FastAPI backend scaffold with health and overview endpoints
-- [x] Binance public REST adapter for spot OHLCV candles
-- [x] BTC/USDT chart connected to Binance REST with 60-second refresh
-- [x] Twelve Data adapter for traditional markets (API key required)
+- [x] React + TypeScript + Vite frontend and FastAPI backend
+- [x] Binance crypto and Twelve Data traditional-market OHLCV adapters
 - [x] RSI, MACD, EMA/SMA, ATR, swing support/resistance, and market-structure calculations
-- [x] Unit tests for technical indicator edge cases
-- [x] Interactive OHLC candlestick chart with volume, market selector, and timeframe controls
-- [ ] Kronos-mini forecasting service
-- [ ] Gemini research and structured trade-plan generation
-- [ ] Deterministic risk validation and manual trade journal
+- [x] Interactive candlestick chart, volume, market selector, and timeframe controls
+- [x] Optional Kronos-mini candle forecasting
+- [x] Optional Gemini AI research analyst
+- [x] Deterministic risk validation and manual trade journal
 - [ ] News aggregation, monitoring, and Telegram alerts
 
 ## Run locally
@@ -40,9 +33,22 @@ npm install
 npm run dev
 ```
 
-Optional frontend environment file: copy `frontend/.env.example` to `frontend/.env.local` and set `VITE_API_BASE_URL` if the API is not running at `http://localhost:8000`.
+Vite proxies `/api/*` and `/health` to `http://localhost:8000` in development. For a separately hosted API, set `VITE_API_BASE_URL` in the frontend build environment.
 
-## Market data API
+## Docker deployment
+
+The repository includes a Docker Compose deployment with a multi-stage frontend image, Nginx reverse proxy, FastAPI container, health checks, and persistent named volumes for the SQLite trade journal and Hugging Face cache.
+
+```bash
+cp .env.example .env
+# Edit .env and add only the provider keys you need.
+docker compose up --build -d
+docker compose ps
+```
+
+Open `http://localhost:8080` by default. See [DEPLOYMENT.md](DEPLOYMENT.md) for configuration, secrets, backups, HTTPS, health checks, Kronos runtime requirements, and production security considerations.
+
+## Market data
 
 The backend supports two read-only market-data providers:
 
@@ -57,21 +63,27 @@ GET /api/v1/markets/AAPL/candles?interval=1h&limit=100&provider=twelvedata
 GET /api/v1/markets/EUR%2FUSD/candles?interval=1h&limit=100&provider=twelvedata
 ```
 
-Supported intervals include `1m`, `5m`, `15m`, `1h`, `4h`, `1d`, and other Binance spot intervals. The API validates symbols, intervals, and limits (1–500), returns UTC timestamps and OHLCV values, and reports provider failures rather than inventing prices.
+The API returns UTC OHLCV values and technical analysis. Provider failures are reported explicitly; synthetic fallback prices are not used. The dashboard refreshes through REST polling, not a WebSocket stream. Portfolio metrics and watchlist values remain illustrative placeholders.
 
-The Twelve Data adapter normalizes returned candles to chronological UTC OHLCV records. Its supported intervals are 1m, 5m, 15m, 30m, 45m, 1h, 2h, 4h, 1d, 1w, and 1M. API-key absence, provider errors, and rate limits are reported explicitly; no fallback prices are fabricated.
+## Optional integrations
 
-The chart supports BTC/USDT, ETH/USDT, and SOL/USDT through Binance, plus AAPL, NVDA, and EUR/USD through Twelve Data. Choose a market and interval in the chart controls. It renders OHLC candles, volume bars, EMA 20/50 overlays, and available confirmed support/resistance levels from the technical-analysis response. Data refreshes through REST polling every 60 seconds; this is not a WebSocket stream. If a provider request fails, the chart displays the error instead of inventing fallback prices. Portfolio metrics and watchlist values remain illustrative placeholders.
+### Kronos-mini
+
+The forecasting runtime is optional and intentionally excluded from the default Docker image because PyTorch and model weights are substantial. See [backend/README.md](backend/README.md#kronos-mini-forecasting) for the upstream source checkout, runtime dependencies, model configuration, and inference endpoint details.
+
+### Gemini AI Analyst
+
+Set `GEMINI_API_KEY` on the backend to enable the optional research analyst. The key remains server-side. `GEMINI_MODEL` defaults to `gemini-2.5-flash`. Provider quota, latency, and availability are external dependencies.
 
 ## Architecture
 
-- **Frontend:** React, TypeScript, Vite, lightweight-charts
+- **Frontend:** React, TypeScript, Vite, lightweight-charts, Nginx
 - **Backend:** Python, FastAPI, Pydantic, httpx
-- **Live crypto market data:** Binance public REST API
-- **Traditional-market data:** Twelve Data
-- **Planned forecasting:** Kronos-mini
-- **Planned AI analysis:** configurable Gemini model
+- **Market data:** Binance public REST API and Twelve Data
+- **Forecasting:** optional Kronos-mini
+- **AI research:** optional Gemini
+- **Trade desk:** deterministic risk engine and SQLite journal
 
 ## Safety boundaries
 
-This is a research and decision-support tool, not an automated trading bot. It will not place broker orders. Forecasts and AI outputs must be labeled as estimates, risk checks must be deterministic and fail safely when instrument specifications are missing, and the user remains responsible for trade decisions and execution.
+This is a research and decision-support tool, not an automated trading bot. The Trade Desk is manual-only: no broker connection, order placement, or automated execution. AI output is never risk approval; all trade plans must pass deterministic checks. Forecasts and AI outputs are estimates, not guarantees or personalized investment advice.
