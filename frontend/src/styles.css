@@ -147,3 +147,6 @@
  .sidebar .nav-item svg{width:17px;height:17px}
  .sidebar .user-card{justify-content:flex-start;padding:13px 5px}
 }
+
+@media(max-width:900px){.sidebar-backdrop{display:block;position:fixed;inset:0;background:#0009;border:0;z-index:4}.sidebar{z-index:5}.sidebar-closed .sidebar{transform:translateX(-110%)}.sidebar-open .sidebar{transform:translateX(0)}}
+@media(min-width:901px){.sidebar-backdrop{display:none!important}}
