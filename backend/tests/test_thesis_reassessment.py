@@ -88,7 +88,8 @@ class ThesisReassessmentTests(unittest.TestCase):
     def test_stale_candles_are_rejected_before_gemini(self):
         candles = self._mock_evidence()
         for candle in candles:
-            candle["time"] = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()\n            candle["close_time"] = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+            candle["time"] = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+            candle["close_time"] = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}, clear=False), \
              patch.object(thesis, "get_binance_candles", new=AsyncMock(return_value=candles)):
             response = self.client.post("/api/v1/thesis/trades/1/reassess", json={
