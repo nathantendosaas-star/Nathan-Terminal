@@ -13,7 +13,8 @@ A personal financial intelligence and trading analysis terminal combining live m
 - [x] Deterministic risk validation and manual trade journal
 - [x] Google News RSS aggregation and search
 - [x] Snapshot-driven trade monitoring with persisted, deduplicated stop-loss / take-profit alerts
-- [x] Optional Telegram alert delivery with retry tracking\n- [x] Gemini trade-thesis reassessment with evidence history and deduplicated alerts
+- [x] Optional Telegram alert delivery with retry tracking
+- [x] Gemini trade-thesis reassessment with evidence history and deduplicated alerts
 
 ## Run locally
 
@@ -86,7 +87,11 @@ Set `GEMINI_API_KEY` on the backend to enable the optional research analyst. The
 - Stop-loss / take-profit events are deduplicated per trade and event type. Telegram delivery is optional: configure `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. Failed or not-configured deliveries can be retried, with a five-attempt cap.
 - Monitoring never closes trades, edits plans, or submits broker orders. A touched level is an alert for manual review, not proof of execution or a guaranteed fill.
 
-## Thesis reassessment\n\nThe Thesis Review workspace reassesses open trade theses against fresh provider candles, technical indicators, and available Google News headlines. It preserves the original thesis and analysis, records each assessment, and alerts on weakened or invalidated theses. See [backend/README.md](backend/README.md#gemini-trade-thesis-reassessment) for API details and evidence freshness rules. AI review never changes risk approval or executes trades.\n\n## Architecture
+## Thesis reassessment
+
+The Thesis Review workspace reassesses open trade theses against fresh provider candles, technical indicators, and available Google News headlines. It preserves the original thesis and analysis, records each assessment, and alerts on weakened or invalidated theses. See [backend/README.md](backend/README.md#gemini-trade-thesis-reassessment) for API details and evidence freshness rules. AI review never changes risk approval or executes trades.
+
+## Architecture
 
 - **Frontend:** React, TypeScript, Vite, lightweight-charts, Nginx
 - **Backend:** Python, FastAPI, Pydantic, httpx
@@ -98,3 +103,16 @@ Set `GEMINI_API_KEY` on the backend to enable the optional research analyst. The
 ## Safety boundaries
 
 This is a research and decision-support tool, not an automated trading bot. The Trade Desk is manual-only: no broker connection, order placement, or automated execution. AI output is never risk approval; all trade plans must pass deterministic checks. Forecasts and AI outputs are estimates, not guarantees or personalized investment advice.
+
+
+## Session lifecycle
+
+Market-data polling is session-scoped. The terminal starts with polling paused; use **Start 8h session** to activate the six-symbol subscription set (BTCUSDT, ETHUSDT, SOLUSDT, NVDA, AAPL, GOOGL). The selected candle timeframe is fixed for the session. The browser refreshes the selected symbol every 60 seconds and checks session expiry every 15 seconds. Stopping or expiry tears down the polling interval; no WebSocket or provider stream is left running in the backend.
+
+- `GET /api/v1/sessions/current` — current active session or no active session.
+- `POST /api/v1/sessions/start` — starts one session with an 8-hour hard maximum; only one active session is allowed.
+- `POST /api/v1/sessions/{session_id}/stop` — stops an active session; repeated stop requests are safe.
+- `GET /api/v1/sessions/history` — last 50 persisted sessions.
+- Session records live in SQLite at `SESSION_DB_PATH` (default `data/sessions.sqlite3` locally; persistent `/data/market_sessions.sqlite3` volume path in Compose). Existing trade journal, monitoring events, and thesis reassessment records are not cleared when a session ends.
+- Session expiry is enforced on session API access. The running browser polls status every 15 seconds and clears market polling when expiry is observed. If the browser is closed, it has no active client subscription to clean up.
+- Sessions describe the app's REST polling subscriptions; they do not create a continuous server-side WebSocket feed. The terminal is still manual research only and never places broker orders.

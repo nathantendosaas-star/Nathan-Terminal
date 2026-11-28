@@ -100,3 +100,16 @@ The Thesis Review workspace compares an open manual trade against its immutable 
 - `WEAKENED` and `INVALIDATED` create in-app monitoring events and use the existing optional Telegram delivery pipeline. Alerts are deduplicated per trade and status.
 - Reassessment is on demand, not a background watcher. It never modifies a trade plan, closes a trade, changes risk approval, or submits broker orders. A Gemini status is not a risk-engine outcome.
 - Gemini output and news are untrusted research context. Verify cited sources independently; absence of headlines is not evidence that no event exists.
+
+
+## Session lifecycle
+
+The session API persists one active market session at a time in SQLite. A session has an immutable eight-hour maximum, an interval, and explicit symbol/provider subscriptions. The default subscription set is BTCUSDT, ETHUSDT, SOLUSDT (Binance public spot) and NVDA, AAPL, GOOGL (Twelve Data). Unknown or duplicate symbols are rejected.
+
+- `GET /api/v1/sessions/current` — returns the active session, marking it EXPIRED if its deadline has passed.
+- `POST /api/v1/sessions/start` — starts a session; returns 409 if another is active.
+- `POST /api/v1/sessions/{session_id}/stop` — idempotently stops a session.
+- `GET /api/v1/sessions/history` — returns the latest 50 sessions.
+- `SESSION_DB_PATH` controls the SQLite path; default is `data/sessions.sqlite3`. Compose mounts it under the existing persistent `trade_data` volume at `/data/market_sessions.sqlite3`.
+
+The frontend checks session status every 15 seconds and only runs its 60-second market candle refresh while the session is ACTIVE. Stop/expiry clears that interval and discards the current live candle view. The timeframe selector is locked for the duration of a session. This milestone does not introduce a backend WebSocket feed or background market worker; no server-side provider subscription is kept alive. Saved trades and their monitoring/thesis history use their existing persistent database and are unaffected by session stop/start.

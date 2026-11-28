@@ -30,6 +30,6 @@ Compose:
 docker compose --env-file .env.example config --quiet
 ```
 
-The API contract suite uses an isolated temporary SQLite database and does not contact external market-data providers, Gemini, Kronos, or a broker. Test-only instrument specifications and quotes are synthetic fixtures and must never be copied into a live Trade Desk configuration.
+The API contract and session lifecycle suites use isolated temporary SQLite databases. Session tests cover the eight-hour deadline, one-active-session rule, stop/history persistence, expiry, and subscription validation. The API contract suite uses an isolated temporary SQLite database and does not contact external market-data providers, Gemini, Kronos, or a broker. Test-only instrument specifications and quotes are synthetic fixtures and must never be copied into a live Trade Desk configuration.
 
 A green CI run confirms the checked test suite and build/configuration steps pass. It does not prove live provider uptime, model inference performance, broker compatibility, trading profitability, or production security. Docker image builds and runtime smoke tests are not part of this workflow yet.
