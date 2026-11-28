@@ -25,7 +25,8 @@ router = APIRouter(prefix="/api/v1/thesis", tags=["trade thesis"])
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 RSS_URL = "https://news.google.com/rss/search"
 ALLOWED_STATUSES = {"VALID", "WEAKENED", "INVALIDATED", "NEEDS_REVIEW"}
-MAX_NEWS_ITEMS = 12\nINTERVAL_MAX_AGE_SECONDS = {"1m": 120, "3m": 360, "5m": 600, "15m": 1800, "30m": 3600, "1h": 7200, "2h": 14400, "4h": 28800, "6h": 43200, "8h": 57600, "12h": 86400, "1d": 259200, "1w": 1814400, "1M": 7776000}
+MAX_NEWS_ITEMS = 12
+INTERVAL_MAX_AGE_SECONDS = {"1m": 120, "3m": 360, "5m": 600, "15m": 1800, "30m": 3600, "1h": 7200, "2h": 14400, "4h": 28800, "6h": 43200, "8h": 57600, "12h": 86400, "1d": 259200, "1w": 1814400, "1M": 7776000}
 
 
 def _connect():
