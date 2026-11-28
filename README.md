@@ -18,8 +18,6 @@ A personal financial intelligence and trading analysis terminal combining live m
 
 ## Run locally
 
-The backend now requires PostgreSQL. Set `DATABASE_URL` and `DATABASE_SCHEMA=app`, and apply `backend/migrations/001_initial_postgresql.sql` before starting FastAPI.
-
 The backend requires a PostgreSQL database. Set `DATABASE_URL` and `DATABASE_SCHEMA=app` before starting the API. Apply `backend/migrations/001_initial_postgresql.sql` once to your database.
 
 ### Backend
@@ -44,7 +42,7 @@ Vite proxies `/api/*` and `/health` to `http://localhost:8000` in development. F
 
 ## Password protection
 
-The app supports a single-owner password gate (OAuth and multi-user accounts are planned separately). Generate `APP_PASSWORD_HASH` with `cd backend && python -m app.auth.password_hash`, generate a random `AUTH_SECRET_KEY`, and configure both as backend-only environment variables. See [DEPLOYMENT.md](DEPLOYMENT.md#single-owner-password-protection). Do not expose the app publicly until the password hash and secret are configured and HTTPS is enabled.
+The app supports browser-based first-time password setup. Open the HTTPS site and create a password of at least 12 characters; the backend hashes it with scrypt and stores the hash and signing secret in Supabase PostgreSQL. See [DEPLOYMENT.md](DEPLOYMENT.md#single-owner-password-protection).
 
 ## Docker deployment
 
