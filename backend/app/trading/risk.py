@@ -30,7 +30,7 @@ def calculate_plan(plan: dict[str, Any], settings: dict[str, Any], instrument: d
     equity = float(settings["account_equity"])
     risk_pct = float(settings["risk_per_trade_pct"])
     daily_pct = float(settings["maximum_daily_loss_pct"])
-    maximum_positions = maximum_positions
+    maximum_positions = int(settings["maximum_simultaneous_positions"])
     minimum_rr = float(settings["minimum_risk_reward"])
     if not all(math.isfinite(value) for value in (equity, risk_pct, daily_pct, minimum_rr)) or equity <= 0 or risk_pct <= 0 or daily_pct <= 0 or minimum_rr <= 0 or maximum_positions < 1:
         return {"status": "NEEDS_REVIEW", "reasons": ["Risk settings are invalid; verify account equity, risk limits and position limits."]}
@@ -47,7 +47,7 @@ def calculate_plan(plan: dict[str, Any], settings: dict[str, Any], instrument: d
 
     if rr < minimum_rr:
         reasons.append(f"Risk/reward {rr:.2f}:1 is below the configured minimum of {minimum_rr:.2f}:1.")
-    if open_positions >= int(settings["maximum_simultaneous_positions"]):
+    if open_positions >= maximum_positions:
         reasons.append("Maximum simultaneous open positions has been reached.")
     if suggested_qty < minimum or suggested_qty <= 0:
         review.append("Risk budget produces a quantity below the instrument minimum; no valid size can be suggested.")
