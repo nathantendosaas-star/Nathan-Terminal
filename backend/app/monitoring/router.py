@@ -4,6 +4,8 @@ This service raises alerts only. It never closes trades or places broker orders.
 """
 from __future__ import annotations
 
+import os
+
 from datetime import datetime, timezone
 from typing import Literal
 
