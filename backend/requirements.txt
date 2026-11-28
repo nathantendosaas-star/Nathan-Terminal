@@ -7,3 +7,6 @@ python-dotenv==1.0.1
 # Optional heavy Kronos runtime dependencies (install only for the forecasting worker)
 # See README.md for the upstream source checkout instructions.
 pywebpush==2.0.3
+
+# Supabase PostgreSQL backend storage
+psycopg[binary]==3.2.4
