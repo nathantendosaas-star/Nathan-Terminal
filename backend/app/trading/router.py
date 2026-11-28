@@ -145,6 +145,9 @@ def validate_plan(plan: TradePlan):
 @router.post("/trades")
 def register_trade(plan: TradePlan):
     with _connect() as conn:
+        # Serialize validation and registration so concurrent requests cannot
+        # both pass the same open-position and daily-risk limits.
+        conn.execute("BEGIN IMMEDIATE")
         result = _validate(conn, plan)
         if result["status"] != "APPROVED":
             raise HTTPException(status_code=409, detail={"validation": result, "message": "Trade not registered. Resolve all risk checks and explicitly submit again."})
@@ -168,6 +171,7 @@ def list_trades(status: Literal["OPEN", "CLOSED", "ALL"] = "ALL"):
 @router.post("/trades/{trade_id}/close")
 def close_trade(trade_id: int, payload: CloseTrade):
     with _connect() as conn:
+        conn.execute("BEGIN IMMEDIATE")
         row = conn.execute("SELECT * FROM trades WHERE id=?", (trade_id,)).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="Trade not found.")
