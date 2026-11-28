@@ -14,6 +14,7 @@ from app.analysis.router import router as analysis_router
 from app.trading.router import router as trading_router
 from app.monitoring.router import router as monitoring_router
 from app.news.router import router as news_router
+from app.thesis.router import router as thesis_router
 
 app = FastAPI(title="Nathan Terminal API", version="0.4.0", description="Personal market intelligence and decision-support API.")
 app.include_router(forecasting_router)
@@ -21,6 +22,7 @@ app.include_router(analysis_router)
 app.include_router(trading_router)
 app.include_router(monitoring_router)
 app.include_router(news_router)
+app.include_router(thesis_router)
 
 # Comma-separated origins support separate frontend domains in production.
 # Same-origin deployments through the included Nginx proxy do not need CORS.
