@@ -9,11 +9,11 @@ import sqlite3
 from datetime import datetime, timezone
 from typing import Literal
 
-import httpx
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.trading.router import _connect as _trading_connect
+from app.push.service import deliver_monitoring_event, subscription_count
 
 router = APIRouter(prefix="/api/v1/monitoring", tags=["monitoring"])
 DB_PATH = os.getenv("TRADING_DB_PATH", "data/trade_desk.sqlite3")
@@ -50,52 +50,8 @@ class PriceSnapshot(BaseModel):
     source: str = Field(min_length=2, max_length=80)
 
 
-def _telegram_configured() -> bool:
-    return bool(os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID"))
-
-
-def _deliver(event: dict) -> tuple[str, str | None]:
-    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
-    if not token or not chat_id:
-        return "not_configured", None
-    message = (
-        f"NATHAN TERMINAL ALERT\n{event['event_type'].replace('_', ' ')}\n"
-        f"{event['symbol']} · trade #{event['trade_id']}\n"
-        f"Observed price: {event['observed_price']}\n"
-        f"Snapshot: {event['market_data_timestamp']}\n"
-        "Review the trade manually. No order was placed and the trade was not closed."
-    )
-    try:
-        response = httpx.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": message},
-            timeout=8.0,
-        )
-        response.raise_for_status()
-        payload = response.json()
-        if not payload.get("ok"):
-            return "failed", "Telegram rejected the message."
-        return "delivered", None
-    except (httpx.HTTPError, ValueError) as exc:
-        return "failed", f"Telegram delivery failed: {type(exc).__name__}"
-
-
 def _send_and_record(conn: sqlite3.Connection, event_id: int) -> dict:
-    row = conn.execute("SELECT * FROM monitoring_events WHERE id=?", (event_id,)).fetchone()
-    if row is None:
-        raise HTTPException(status_code=404, detail="Monitoring event not found.")
-    event = dict(row)
-    status, error = _deliver(event)
-    attempts = event["delivery_attempts"] + (1 if status in {"delivered", "failed"} else 0)
-    delivered_at = datetime.now(timezone.utc).isoformat() if status == "delivered" else None
-    conn.execute(
-        "UPDATE monitoring_events SET delivery_status=?,delivery_attempts=?,last_error=?,delivered_at=? WHERE id=?",
-        (status, attempts, error, delivered_at, event_id),
-    )
-    conn.commit()
-    updated = dict(conn.execute("SELECT * FROM monitoring_events WHERE id=?", (event_id,)).fetchone())
-    return updated
+    return deliver_monitoring_event(conn, event_id)
 
 
 @router.get("/status")
@@ -104,13 +60,15 @@ def monitoring_status():
         open_count = conn.execute("SELECT COUNT(*) FROM trades WHERE status='OPEN'").fetchone()[0]
         event_count = conn.execute("SELECT COUNT(*) FROM monitoring_events").fetchone()[0]
         failed_count = conn.execute("SELECT COUNT(*) FROM monitoring_events WHERE delivery_status='failed'").fetchone()[0]
+        devices = subscription_count()
         latest = conn.execute("SELECT created_at FROM monitoring_events ORDER BY id DESC LIMIT 1").fetchone()
         return {
             "mode": "snapshot_driven",
             "open_trades": open_count,
             "events": event_count,
             "failed_deliveries": failed_count,
-            "telegram_configured": _telegram_configured(),
+            "push_enabled": devices > 0,
+            "push_devices": devices,
             "latest_event_at": latest["created_at"] if latest else None,
             "automatic_execution": False,
         }
@@ -174,7 +132,7 @@ def retry_delivery(event_id: int):
         if row is None:
             raise HTTPException(status_code=404, detail="Monitoring event not found.")
         if row["delivery_status"] not in {"failed", "not_configured"}:
-            raise HTTPException(status_code=409, detail="Only failed or not-configured Telegram deliveries can be retried.")
+            raise HTTPException(status_code=409, detail="Only failed or not-configured push deliveries can be retried.")
         if row["delivery_attempts"] >= 5:
             raise HTTPException(status_code=429, detail="Delivery retry limit reached.")
         return _send_and_record(conn, event_id)

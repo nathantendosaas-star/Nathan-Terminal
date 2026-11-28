@@ -48,3 +48,6 @@
 .auth-lock:hover{border-color:#6edbb5;color:#6edbb5}
 
 .gemini-model-select{display:block;width:100%;margin:0 0 14px;background:#0a1017;border:1px solid #2a3948;border-radius:5px;color:#dce5ee;padding:10px 11px;font:11px "DM Mono";outline:none}.gemini-model-select:focus{border-color:#48c99e}.gemini-model-select:disabled{opacity:.55;cursor:not-allowed}
+
+.push-settings{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:17px 19px;margin-bottom:14px}.push-settings h2{font:600 15px 'Space Grotesk';margin:5px 0;color:#e4edf4}.push-settings p{font-size:11px;line-height:1.55;color:#8e9dad;margin:0;max-width:600px}.push-settings .outline-btn{white-space:nowrap;flex-shrink:0}.push-message{display:block;color:#73d9b4;font-size:10px;margin-top:7px;line-height:1.5}
+@media(max-width:620px){.push-settings{align-items:flex-start;flex-direction:column}.push-settings .outline-btn{width:100%}}

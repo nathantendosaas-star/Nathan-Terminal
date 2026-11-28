@@ -6,3 +6,4 @@ httpx==0.28.1
 python-dotenv==1.0.1
 # Optional heavy Kronos runtime dependencies (install only for the forecasting worker)
 # See README.md for the upstream source checkout instructions.
+pywebpush==2.0.3

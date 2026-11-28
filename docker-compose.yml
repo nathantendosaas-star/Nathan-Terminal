@@ -11,8 +11,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
       AUTH_DB_PATH: /data/trade_desk.sqlite3
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@example.com}
       MONITORING_MAX_SNAPSHOT_AGE_SECONDS: ${MONITORING_MAX_SNAPSHOT_AGE_SECONDS:-300}
       TRADING_DB_PATH: /data/trade_desk.sqlite3
       SESSION_DB_PATH: ${SESSION_DB_PATH:-/data/market_sessions.sqlite3}

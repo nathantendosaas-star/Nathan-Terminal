@@ -97,7 +97,7 @@ The Thesis Review workspace compares an open manual trade against its immutable 
 - `GET /api/v1/thesis/trades/{trade_id}/history` — retrieve the baseline, reassessment history, evidence snapshots, and deduplicated alerts.
 - Gemini must return structured JSON with status `VALID`, `WEAKENED`, `INVALIDATED`, or `NEEDS_REVIEW`, plus assessment, changes, supporting/contradicting/missing evidence, and confidence.
 - Candle timestamps are checked for freshness using `THESIS_MAX_CANDLE_AGE_SECONDS` (default 7200 seconds). Stale or malformed candle evidence is rejected before Gemini is called. If the requested news feed is unavailable, the result is downgraded to `NEEDS_REVIEW`.
-- `WEAKENED` and `INVALIDATED` create in-app monitoring events and use the existing optional Telegram delivery pipeline. Alerts are deduplicated per trade and status.
+- `WEAKENED` and `INVALIDATED` create in-app monitoring events and use the Web Push delivery pipeline when at least one device is subscribed. Alerts are deduplicated per trade and status.
 - Reassessment is on demand, not a background watcher. It never modifies a trade plan, closes a trade, changes risk approval, or submits broker orders. A Gemini status is not a risk-engine outcome.
 - Gemini output and news are untrusted research context. Verify cited sources independently; absence of headlines is not evidence that no event exists.
 
@@ -124,3 +124,14 @@ python -m app.auth.password_hash
 ```
 
 Use a password of at least 12 characters. Generate `AUTH_SECRET_KEY` independently with `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Never expose either value to the frontend. Protected API requests require a signed 12-hour bearer session. Login attempts are rate-limited per backend process. This is a single-user password gate; OAuth, password reset, multi-user roles, and centralized rate limiting are not part of this milestone.
+
+
+## PWA Web Push notifications
+
+- The frontend includes an installable web app manifest, service worker, and mobile PWA metadata.
+- In the Monitoring workspace, choose Enable phone notifications and grant browser notification permission. Each browser/device registers a separate subscription.
+- The API exposes GET /api/v1/push/public-key, GET /api/v1/push/status, POST /api/v1/push/subscribe, and POST /api/v1/push/unsubscribe.
+- VAPID private/public keys and device subscriptions are stored in the persistent trade database. Preserve that database across redeploys; the private key never reaches the browser.
+- Set VAPID_SUBJECT to a valid mailto: or HTTPS contact identity. Push requires HTTPS in production (localhost is allowed for local development) and explicit browser permission.
+- Monitoring and thesis alerts are sent to subscribed devices. Expired provider endpoints (HTTP 404/410) are removed. Delivery is tracked per device; failed notifications can be retried up to five times. Existing in-app event history remains available.
+- Web Push is best-effort and depends on browser/OS notification settings, network availability, and provider delivery. It does not create a background market-data watcher.
