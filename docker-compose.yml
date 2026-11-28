@@ -12,7 +12,7 @@ services:
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@example.com}
       MONITORING_MAX_SNAPSHOT_AGE_SECONDS: ${MONITORING_MAX_SNAPSHOT_AGE_SECONDS:-300}
-      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to the Supabase PostgreSQL session-pooler connection string}
+      DATABASE_URL: ${DATABASE_URL:-}
       DATABASE_SCHEMA: ${DATABASE_SCHEMA:-app}
       HF_HOME: /models/huggingface
     volumes:
