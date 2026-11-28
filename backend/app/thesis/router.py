@@ -184,7 +184,7 @@ async def reassess_trade_thesis(trade_id: int, request: ReassessmentRequest):
             if request.original_analysis and request.original_analysis.strip() != thesis["original_analysis"]:
                 raise HTTPException(status_code=409, detail="The original analysis is immutable once saved.")
 
-    if request.provider == "twelvedata":
+    if request.forecast_context is not None and len(json.dumps(request.forecast_context)) > 4000:\n        raise HTTPException(status_code=422, detail="Optional forecast context must be 4000 characters or fewer.")\n\n    if request.provider == "twelvedata":
         candles = await get_twelve_data_candles(trade["symbol"], interval=request.interval, limit=200)
         source = "twelve_data"
     else:
