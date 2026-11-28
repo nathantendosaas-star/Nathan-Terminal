@@ -113,3 +113,14 @@ The session API persists one active market session at a time in SQLite. A sessio
 - `SESSION_DB_PATH` controls the SQLite path; default is `data/sessions.sqlite3`. Compose mounts it under the existing persistent `trade_data` volume at `/data/market_sessions.sqlite3`.
 
 The frontend checks session status every 15 seconds and only runs its 60-second market candle refresh while the session is ACTIVE. Stop/expiry clears that interval and discards the current live candle view. The timeframe selector is locked for the duration of a session. This milestone does not introduce a backend WebSocket feed or background market worker; no server-side provider subscription is kept alive. Saved trades and their monitoring/thesis history use their existing persistent database and are unaffected by session stop/start.
+
+## Single-owner password authentication
+
+Set `APP_PASSWORD_HASH` and `AUTH_SECRET_KEY` on the backend. Generate the password hash locally:
+
+```bash
+cd backend
+python -m app.auth.password_hash
+```
+
+Use a password of at least 12 characters. Generate `AUTH_SECRET_KEY` independently with `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Never expose either value to the frontend. Protected API requests require a signed 12-hour bearer session. Login attempts are rate-limited per backend process. This is a single-user password gate; OAuth, password reset, multi-user roles, and centralized rate limiting are not part of this milestone.
