@@ -32,7 +32,7 @@ export default function NewsPanel() {
     <section className="news-list">{data?.items.map((item, index) => <article className="panel news-item" key={item.url || index}>
       <div className="panel-kicker">{item.source} {item.published_at ? `· ${new Date(item.published_at).toLocaleString()}` : ""}</div>
       <h2>{item.url ? <a href={item.url} target="_blank" rel="noreferrer">{item.title}</a> : item.title}</h2>
-      <p dangerouslySetInnerHTML={{ __html: item.summary }} />
+      <p>{item.summary.replace(/<[^>]*>/g, " ")}</p>
     </article>)}</section>
     <p className="analysis-disclaimer">{data?.disclaimer || "Headlines are research context. Verify important information with the original publisher."}</p>
   </div>;
