@@ -13,8 +13,7 @@ def _b64url(value: bytes) -> str:
     import base64
     return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
 
-def _connect() -> sqlite3.Connection:
-    conn = _trading_connect()
+def _ensure_tables(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     conn.execute("""CREATE TABLE IF NOT EXISTS push_subscriptions (
       endpoint_hash TEXT PRIMARY KEY, endpoint TEXT NOT NULL UNIQUE, p256dh TEXT NOT NULL,
@@ -25,6 +24,11 @@ def _connect() -> sqlite3.Connection:
       attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT, delivered_at TEXT,
       PRIMARY KEY(event_id, endpoint_hash))""")
     conn.commit()
+
+
+def _connect() -> sqlite3.Connection:
+    conn = _trading_connect()
+    _ensure_tables(conn)
     return conn
 
 def vapid_credentials() -> tuple[str, str]:
@@ -66,6 +70,7 @@ def remove_subscription(endpoint: str) -> int:
         return int(conn.execute("SELECT COUNT(*) FROM push_subscriptions").fetchone()[0])
 
 def deliver_monitoring_event(conn: sqlite3.Connection, event_id: int) -> dict[str, Any]:
+    _ensure_tables(conn)
     row = conn.execute("SELECT * FROM monitoring_events WHERE id=?", (event_id,)).fetchone()
     if row is None:
         from fastapi import HTTPException
