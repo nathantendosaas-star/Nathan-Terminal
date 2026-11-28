@@ -17,7 +17,8 @@ from pydantic import BaseModel, Field
 from app.market_data.binance import get_binance_candles
 from app.market_data.twelve_data import get_twelve_data_candles
 from app.market_data.technical import calculate_technical_analysis
-from app.monitoring import router as monitoring\nfrom app.monitoring.router import _send_and_record
+from app.monitoring import router as monitoring
+from app.monitoring.router import _send_and_record
 from app.trading.router import _connect as _trading_connect
 
 router = APIRouter(prefix="/api/v1/thesis", tags=["trade thesis"])
