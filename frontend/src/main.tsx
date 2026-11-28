@@ -6,7 +6,8 @@ import "./styles.css";
 
 // The backend uses short-lived bearer sessions. Keep the token scoped to this tab.
 const originalFetch = window.fetch.bind(window);
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\\/$/, "");
+const API_ORIGIN = import.meta.env.VITE_API_BASE_URL || "";
+const API_BASE = API_ORIGIN.endsWith("/") ? API_ORIGIN.slice(0, -1) : API_ORIGIN;
 window.fetch = (input: RequestInfo | URL, init: RequestInit = {}) => {
   const token = sessionStorage.getItem("nt_access_token");
   const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
