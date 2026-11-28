@@ -84,7 +84,7 @@ The trade desk is deliberately manual-only. It does not connect to a broker, sub
 - Position sizing uses configured account equity, risk percentage, contract multiplier, quantity step, and minimum quantity; suggested quantities are rounded down.
 - Validates direction-specific stop/target placement, risk/reward, per-trade risk budget, daily loss exposure, maximum simultaneous positions, market quote freshness, and conflicting opposite-direction positions.
 - Outcomes are `APPROVED`, `REJECTED`, or `NEEDS_REVIEW`. Missing instrument specifications or quote context require review; hard rule violations reject the plan.
-- The local SQLite journal is stored at `data/trade_desk.sqlite3` by default. Set `TRADING_DB_PATH` to a persistent mounted path in deployment; ephemeral hosting filesystems may lose journal data.
+- When `DATABASE_URL` is set, settings, instrument specifications, trades, and P&L history are stored in the private Supabase PostgreSQL `app` schema. Without `DATABASE_URL`, local development and the existing unit tests continue to use SQLite.
 - P&L journal calculations are gross price-difference calculations and do not include commissions, spread, funding, swaps, slippage, taxes, or currency conversion. Validate contract specs and quote/account currency compatibility yourself.
 - This tool is a decision-support calculator, not financial advice. It does not guarantee fills, stops, or realized loss limits.
 
@@ -104,26 +104,26 @@ The Thesis Review workspace compares an open manual trade against its immutable 
 
 ## Session lifecycle
 
-The session API persists one active market session at a time in SQLite. A session has an immutable eight-hour maximum, an interval, and explicit symbol/provider subscriptions. The default subscription set is BTCUSDT, ETHUSDT, SOLUSDT (Binance public spot) and NVDA, AAPL, GOOGL (Twelve Data). Unknown or duplicate symbols are rejected.
+The session API persists one active market session at a time in Supabase PostgreSQL when `DATABASE_URL` is configured (otherwise SQLite is used for local development). A session has an immutable eight-hour maximum, an interval, and explicit symbol/provider subscriptions. The default subscription set is BTCUSDT, ETHUSDT, SOLUSDT (Binance public spot) and NVDA, AAPL, GOOGL (Twelve Data). Unknown or duplicate symbols are rejected.
 
 - `GET /api/v1/sessions/current` — returns the active session, marking it EXPIRED if its deadline has passed.
 - `POST /api/v1/sessions/start` — starts a session; returns 409 if another is active.
 - `POST /api/v1/sessions/{session_id}/stop` — idempotently stops a session.
 - `GET /api/v1/sessions/history` — returns the latest 50 sessions.
-- `SESSION_DB_PATH` controls the SQLite path; default is `data/sessions.sqlite3`. Compose mounts it under the existing persistent `trade_data` volume at `/data/market_sessions.sqlite3`.
+- The session history shares the same Supabase PostgreSQL database as the trade journal in production.
 
 The frontend checks session status every 15 seconds and only runs its 60-second market candle refresh while the session is ACTIVE. Stop/expiry clears that interval and discards the current live candle view. The timeframe selector is locked for the duration of a session. This milestone does not introduce a backend WebSocket feed or background market worker; no server-side provider subscription is kept alive. Saved trades and their monitoring/thesis history use their existing persistent database and are unaffected by session stop/start.
 
 ## Single-owner password authentication
 
-Set `APP_PASSWORD_HASH` and `AUTH_SECRET_KEY` on the backend. Generate the password hash locally:
+In production with `DATABASE_URL`, first-time password setup stores the scrypt password hash and generated signing secret in Supabase's private `app.app_settings` table. Open the terminal and complete the first-run password setup screen. For local development without Supabase, the same settings are stored in SQLite. You may alternatively provide `APP_PASSWORD_HASH` and `AUTH_SECRET_KEY` as backend secrets.
 
 ```bash
 cd backend
 python -m app.auth.password_hash
 ```
 
-Use a password of at least 12 characters. Generate `AUTH_SECRET_KEY` independently with `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Never expose either value to the frontend. Protected API requests require a signed 12-hour bearer session. Login attempts are rate-limited per backend process. This is a single-user password gate; OAuth, password reset, multi-user roles, and centralized rate limiting are not part of this milestone.
+Use a password of at least 12 characters. Never expose either value to the frontend. Protected API requests require a signed 12-hour bearer session. Login attempts are rate-limited per backend process. This is a single-user password gate; OAuth, password reset, multi-user roles, and centralized rate limiting are not part of this milestone.
 
 
 ## PWA Web Push notifications
@@ -135,3 +135,16 @@ Use a password of at least 12 characters. Generate `AUTH_SECRET_KEY` independent
 - Set VAPID_SUBJECT to a valid mailto: or HTTPS contact identity. Push requires HTTPS in production (localhost is allowed for local development) and explicit browser permission.
 - Monitoring and thesis alerts are sent to subscribed devices. Expired provider endpoints (HTTP 404/410) are removed. Delivery is tracked per device; failed notifications can be retried up to five times. Existing in-app event history remains available.
 - Web Push is best-effort and depends on browser/OS notification settings, network availability, and provider delivery. It does not create a background market-data watcher.
+
+
+## Supabase PostgreSQL deployment
+
+Production storage uses Supabase PostgreSQL directly from the FastAPI backend. The browser does not connect to PostgreSQL and must never receive the database password or a service-role key.
+
+1. Apply the versioned SQL migration in `supabase/migrations/` to the Supabase project before starting the backend.
+2. Set `DATABASE_URL` on the backend host to the Supabase **Session pooler** connection string, including `sslmode=require`. Use the connection string from the project's **Connect** panel; do not commit it or paste it into frontend environment variables.
+3. The backend sets its PostgreSQL search path to the private `app` schema. The migration revokes schema access from public, `anon`, and `authenticated`; only the server-side database role should access application tables.
+4. Keep the same Supabase database and credentials across redeployments. PostgreSQL stores account settings, verified instrument specifications, trades, auth settings, market sessions, monitoring events, push subscriptions, and thesis history.
+5. Local development remains SQLite-backed when `DATABASE_URL` is absent. Do not set `TRADING_DB_PATH` or `SESSION_DB_PATH` in production to try to configure Supabase; those are local SQLite compatibility settings.
+
+The CI pipeline applies the same migration to a clean PostgreSQL 17 service and runs backend persistence integration tests against it.
