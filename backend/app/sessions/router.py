@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+from app.database import connect as _postgres_connect
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Literal
@@ -34,11 +35,8 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _connect() -> sqlite3.Connection:
-    os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=10)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
+def _connect():
+    conn = _postgres_connect()
     conn.execute("""
         CREATE TABLE IF NOT EXISTS market_sessions (
             id TEXT PRIMARY KEY,
@@ -50,6 +48,7 @@ def _connect() -> sqlite3.Connection:
             symbols_json TEXT NOT NULL
         )
     """)
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS one_active_market_session ON market_sessions (status) WHERE status='ACTIVE'")
     conn.commit()
     return conn
 
