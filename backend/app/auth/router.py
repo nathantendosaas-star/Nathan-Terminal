@@ -22,10 +22,19 @@ def _connect()->sqlite3.Connection:
     connection.execute("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     return connection
 def get_setting(key:str,default:str="")->str:
-    with _connect() as connection: row=connection.execute("SELECT value FROM app_settings WHERE key=?",(key,)).fetchone()
-    return str(row[0]) if row else default
+    connection=_connect()
+    try:
+        row=connection.execute("SELECT value FROM app_settings WHERE key=?",(key,)).fetchone()
+        return str(row[0]) if row else default
+    finally:
+        connection.close()
 def set_setting(key:str,value:str)->None:
-    with _connect() as connection: connection.execute("INSERT INTO app_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(key,value))
+    connection=_connect()
+    try:
+        connection.execute("INSERT INTO app_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(key,value))
+        connection.commit()
+    finally:
+        connection.close()
 def _configured_password_hash()->str:
     return os.getenv("APP_PASSWORD_HASH","").strip() or get_setting("auth_password_hash")
 def auth_is_configured()->bool:

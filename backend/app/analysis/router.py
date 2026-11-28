@@ -16,6 +16,10 @@ GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 GEMINI_MODELS = ("gemini-3.8-flash", "gemini-3.6-flash")
 DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
 
+def get_active_model() -> str:
+    selected = get_setting("gemini_model", "").strip() or os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL).strip()
+    return selected if selected in GEMINI_MODELS else DEFAULT_GEMINI_MODEL
+
 
 class ModelSelection(BaseModel):
     model: Literal["gemini-3.8-flash", "gemini-3.6-flash"]
@@ -45,7 +49,7 @@ def build_analysis_prompt(symbol: str, interval: str, candles: list[dict], techn
 
 @router.get("/status")
 async def analysis_status() -> dict:
-    return {"provider": "Google Gemini API", "configured": bool(os.getenv("GEMINI_API_KEY", "").strip()), "model": get_setting("gemini_model", os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)), "models": list(GEMINI_MODELS)}
+    return {"provider": "Google Gemini API", "configured": bool(os.getenv("GEMINI_API_KEY", "").strip()), "model": get_active_model(), "models": list(GEMINI_MODELS)}
 
 
 @router.put("/model")
