@@ -8,6 +8,9 @@ services:
       TWELVE_DATA_API_KEY: ${TWELVE_DATA_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      MONITORING_MAX_SNAPSHOT_AGE_SECONDS: ${MONITORING_MAX_SNAPSHOT_AGE_SECONDS:-300}
       TRADING_DB_PATH: /data/trade_desk.sqlite3
       HF_HOME: /models/huggingface
     volumes:
