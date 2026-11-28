@@ -1,8 +1,6 @@
 """Manual-only trade desk and deterministic risk engine."""
 from __future__ import annotations
 
-import os
-import sqlite3
 from app.database import connect as _postgres_connect
 from datetime import datetime, timezone
 from typing import Literal
@@ -13,7 +11,6 @@ from pydantic import BaseModel, Field
 from app.trading.risk import calculate_plan
 
 router = APIRouter(prefix="/api/v1/trading", tags=["trade desk"])
-DB_PATH = os.getenv("TRADING_DB_PATH", "data/trade_desk.sqlite3")
 DEFAULT_SETTINGS = {"account_equity": 10000.0, "account_currency": "USD", "risk_per_trade_pct": 1.0, "maximum_daily_loss_pct": 3.0, "maximum_simultaneous_positions": 3, "minimum_risk_reward": 2.0, "maximum_market_data_age_seconds": 300}
 
 
