@@ -98,3 +98,16 @@ Set `GEMINI_API_KEY` on the backend to enable the optional research analyst. The
 ## Safety boundaries
 
 This is a research and decision-support tool, not an automated trading bot. The Trade Desk is manual-only: no broker connection, order placement, or automated execution. AI output is never risk approval; all trade plans must pass deterministic checks. Forecasts and AI outputs are estimates, not guarantees or personalized investment advice.
+
+
+## Session lifecycle
+
+Market-data polling is session-scoped. The terminal starts with polling paused; use **Start 8h session** to activate the six-symbol subscription set (BTCUSDT, ETHUSDT, SOLUSDT, NVDA, AAPL, GOOGL). The selected candle timeframe is fixed for the session. The browser refreshes the selected symbol every 60 seconds and checks session expiry every 15 seconds. Stopping or expiry tears down the polling interval; no WebSocket or provider stream is left running in the backend.
+
+- `GET /api/v1/sessions/current` — current active session or no active session.
+- `POST /api/v1/sessions/start` — starts one session with an 8-hour hard maximum; only one active session is allowed.
+- `POST /api/v1/sessions/{session_id}/stop` — stops an active session; repeated stop requests are safe.
+- `GET /api/v1/sessions/history` — last 50 persisted sessions.
+- Session records live in SQLite at `SESSION_DB_PATH` (default `data/sessions.sqlite3` locally; persistent `/data/market_sessions.sqlite3` volume path in Compose). Existing trade journal, monitoring events, thesis records and analysis history are not cleared when a session ends.
+- Session expiry is enforced on session API access. The running browser polls status every 15 seconds and clears market polling when expiry is observed. If the browser is closed, it has no active client subscription to clean up.
+- Sessions describe the app's REST polling subscriptions; they do not create a continuous server-side WebSocket feed. The terminal is still manual research only and never places broker orders.
