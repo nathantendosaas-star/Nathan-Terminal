@@ -4,19 +4,17 @@ This service raises alerts only. It never closes trades or places broker orders.
 """
 from __future__ import annotations
 
-import os
-import sqlite3
 from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from app.database import Connection
 from app.trading.router import _connect as _trading_connect
 from app.push.service import deliver_monitoring_event, subscription_count
 
 router = APIRouter(prefix="/api/v1/monitoring", tags=["monitoring"])
-DB_PATH = os.getenv("TRADING_DB_PATH", "data/trade_desk.sqlite3")
 MAX_SNAPSHOT_AGE_SECONDS = int(os.getenv("MONITORING_MAX_SNAPSHOT_AGE_SECONDS", "300"))
 
 
@@ -50,7 +48,7 @@ class PriceSnapshot(BaseModel):
     source: str = Field(min_length=2, max_length=80)
 
 
-def _send_and_record(conn: sqlite3.Connection, event_id: int) -> dict:
+def _send_and_record(conn: Connection, event_id: int) -> dict:
     return deliver_monitoring_event(conn, event_id)
 
 
