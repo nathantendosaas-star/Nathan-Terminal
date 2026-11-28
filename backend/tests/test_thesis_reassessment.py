@@ -1,6 +1,7 @@
 import json
 import os
-import tempfile
+import uuid
+import psycopg
 import unittest
 from unittest.mock import AsyncMock, patch
 from datetime import datetime, timedelta, timezone
@@ -8,16 +9,14 @@ from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.trading import router as trading
 from app.thesis import router as thesis
 
 
 class ThesisReassessmentTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.db = os.path.join(self.temp.name, "thesis.sqlite3")
-        self.trading_path = trading.DB_PATH
-        trading.DB_PATH = self.db
+        self.schema = "test_" + uuid.uuid4().hex
+        self.schema_patch = patch.dict(os.environ, {"DATABASE_SCHEMA": self.schema})
+        self.schema_patch.start()
         self.client = TestClient(app)
         with self.client:
             self.client.put("/api/v1/trading/instruments", json={
@@ -36,8 +35,9 @@ class ThesisReassessmentTests(unittest.TestCase):
             })
 
     def tearDown(self):
-        trading.DB_PATH = self.trading_path
-        self.temp.cleanup()
+        self.schema_patch.stop()
+        with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+            conn.execute('DROP SCHEMA IF EXISTS "' + self.schema + '" CASCADE')
 
     def _mock_evidence(self):
         now = datetime.now(timezone.utc)
