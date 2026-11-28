@@ -1,4 +1,5 @@
 import unittest
+from app.analysis.router import GEMINI_MODELS, DEFAULT_GEMINI_MODEL
 
 from app.analysis.router import AnalysisRequest, build_analysis_prompt
 
@@ -11,6 +12,10 @@ class GeminiAnalysisTests(unittest.TestCase):
         self.assertIn("Explain momentum", prompt)
         self.assertIn("Never issue personalized investment advice", prompt)
         self.assertIn("2026-01-01", prompt)
+
+    def test_model_catalog_uses_current_flash_models(self):
+        self.assertEqual(DEFAULT_GEMINI_MODEL, "gemini-3.8-flash")
+        self.assertEqual(GEMINI_MODELS, ("gemini-3.8-flash", "gemini-3.6-flash"))
 
     def test_request_defaults(self):
         request = AnalysisRequest(symbol="BTCUSDT")

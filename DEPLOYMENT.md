@@ -26,56 +26,17 @@ Open `http://localhost:8080` (or your configured `APP_PORT`). The frontend proxi
 
 ## Single-owner password protection
 
-Before exposing the app, configure password authentication on the backend:
+Password protection is initialized from the app itself; no terminal, laptop, password-hash command, or manually generated signing secret is required.
 
-1. In a local checkout, run `cd backend && python -m app.auth.password_hash`. Choose a unique password of at least 12 characters and copy the generated `APP_PASSWORD_HASH` output.
-2. Generate a separate random `AUTH_SECRET_KEY` with at least 32 characters (for example, `python -c "import secrets; print(secrets.token_urlsafe(48))"`).
-3. Set both values as **backend environment variables on Render**. Never put either value in Vercel, frontend build variables, Git, or chat.
-4. Set `FRONTEND_ORIGIN` on Render to the exact deployed Vercel origin, such as `https://your-project.vercel.app`.
-5. Set `VITE_API_BASE_URL` in Vercel to the Render backend origin, such as `https://your-api.onrender.com`, then redeploy the frontend.
-6. Redeploy the Render backend. The app will show a password gate; API routes require a signed, 12-hour bearer session. The login endpoint limits repeated attempts per process.
+1. Deploy the backend with a persistent database path. The default auth database shares the trade-journal SQLite file; in Docker Compose it is mounted at `/data/trade_desk.sqlite3`.
+2. Open the HTTPS frontend on your phone. On first visit, the app displays a **Create your password** screen.
+3. Enter and confirm a unique password of at least 12 characters. The browser sends it over HTTPS to the backend's one-time setup endpoint. The backend hashes it with scrypt and stores only the hash.
+4. The backend generates and stores its own random signing secret in the same persistent database. You do not need to create or configure `AUTH_SECRET_KEY`.
 
-The password hash is generated with scrypt; the raw password is never stored by the backend. The browser keeps the short-lived access token in tab-scoped session storage and clears it when the session expires or the user locks the terminal. OAuth and multi-user accounts are not included yet. Use HTTPS for both origins.
+The setup endpoint is one-time only. Later visits show the normal password login. Keep the database on persistent storage and restrict access to the backend/database; losing the database means losing the configured password and signing secret. Existing deployments may continue using legacy `APP_PASSWORD_HASH` and `AUTH_SECRET_KEY` environment variables, but new installs should use in-app setup.
 
-## Configuration
+Sessions remain signed bearer tokens with a 12-hour lifetime and are stored in tab-scoped `sessionStorage`. Use HTTPS for every public deployment. OAuth, multi-user accounts, password reset, and account recovery remain out of scope.
 
+## Gemini model selection
 
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `APP_PORT` | Host port for Nginx | `8080` |
-| `FRONTEND_ORIGIN` | Allowed browser origin(s), comma-separated | `http://localhost:8080` |
-| `TWELVE_DATA_API_KEY` | Optional traditional-market data | unset |
-| `GEMINI_API_KEY` | Optional Gemini analyst | unset |
-| `GEMINI_MODEL` | Gemini model identifier | `gemini-2.5-flash` |
-| `TRADING_DB_PATH` | SQLite database inside API container | `/data/trade_desk.sqlite3` |
-| `HF_HOME` | Hugging Face cache inside API container | `/models/huggingface` |
-
-The Compose file mounts named volumes for trade data and model cache. Back up the `trade_data` volume regularly; container replacement does not remove named volumes, but deleting volumes does. Do not use ephemeral container filesystems for the trade journal.
-
-## Health and operations
-
-- API readiness/liveness endpoint: `GET /health`
-- Frontend container health endpoint: `GET /healthz`
-- Compose waits for the API health check before starting the frontend.
-- Inspect health with `docker compose ps`; inspect logs with `docker compose logs`.
-- Apply updates with `docker compose up --build -d`.
-- Back up the SQLite volume before upgrades and test restoration periodically.
-
-## Optional Kronos runtime
-
-The default API image intentionally excludes PyTorch and the upstream Kronos source to keep the baseline image smaller. Consequently, the forecast endpoint reports that Kronos is unavailable until its optional runtime is installed. Follow [backend/README.md](backend/README.md#kronos-mini-forecasting) to install the upstream source and `requirements-kronos.txt` into a dedicated forecasting image/worker with suitable CPU or CUDA resources. Do not assume the standard Compose API image can load the model.
-
-## Production security checklist
-
-- Terminate HTTPS at a trusted reverse proxy or managed ingress in front of Nginx.
-- Restrict host and container access; do not publish the API port directly.
-- Store secrets in a secret manager where available and rotate exposed credentials.
-- Configure domain-specific `FRONTEND_ORIGIN`; avoid wildcard CORS origins.
-- Restrict access to the application with an authentication layer before exposing it publicly. This MVP does not implement user authentication or authorization.
-- Use persistent, backed-up storage for SQLite. SQLite is intended for a single application instance; do not scale API replicas against one shared SQLite file.
-- Review resource limits and memory requirements before enabling Kronos inference.
-- Confirm provider quotas, data licensing, and service terms for your deployment.
-
-## Important product boundaries
-
-This is research and decision support. The Trade Desk remains manual-only: no broker connection, order submission, or automated execution is included. AI outputs are not risk approvals; the deterministic risk engine remains authoritative. No stop execution or loss limit is guaranteed.
+Set `GEMINI_API_KEY` only in the backend's Render environment. The default model is `gemini-3.8-flash`; the AI Analyst workspace lets you switch to `gemini-3.6-flash`. The selected model is saved in the backend's persistent SQLite settings and is used for subsequent analysis requests. Never place the Gemini API key in Vercel frontend variables.

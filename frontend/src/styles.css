@@ -46,3 +46,5 @@
 .auth-app{min-height:100vh}
 .auth-lock{position:fixed;z-index:1000;right:12px;bottom:12px;border:1px solid #435363;background:#101923;color:#bdcbd8;border-radius:5px;padding:8px 11px;font:9px 'DM Mono';cursor:pointer;opacity:.88}
 .auth-lock:hover{border-color:#6edbb5;color:#6edbb5}
+
+.gemini-model-select{display:block;width:100%;margin:0 0 14px;background:#0a1017;border:1px solid #2a3948;border-radius:5px;color:#dce5ee;padding:10px 11px;font:11px "DM Mono";outline:none}.gemini-model-select:focus{border-color:#48c99e}.gemini-model-select:disabled{opacity:.55;cursor:not-allowed}

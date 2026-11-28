@@ -9,9 +9,16 @@ from pydantic import BaseModel, Field
 from app.market_data.binance import get_binance_candles
 from app.market_data.twelve_data import get_twelve_data_candles
 from app.market_data.technical import calculate_technical_analysis
+from app.auth.router import get_setting, set_setting
 
 router = APIRouter(prefix="/api/v1/analysis", tags=["AI analysis"])
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+GEMINI_MODELS = ("gemini-3.8-flash", "gemini-3.6-flash")
+DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
+
+
+class ModelSelection(BaseModel):
+    model: Literal["gemini-3.8-flash", "gemini-3.6-flash"]
 
 
 class AnalysisRequest(BaseModel):
@@ -38,7 +45,15 @@ def build_analysis_prompt(symbol: str, interval: str, candles: list[dict], techn
 
 @router.get("/status")
 async def analysis_status() -> dict:
-    return {"provider": "Google Gemini API", "configured": bool(os.getenv("GEMINI_API_KEY", "").strip()), "model": os.getenv("GEMINI_MODEL", "gemini-2.5-flash")}
+    return {"provider": "Google Gemini API", "configured": bool(os.getenv("GEMINI_API_KEY", "").strip()), "model": get_setting("gemini_model", os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)), "models": list(GEMINI_MODELS)}
+
+
+@router.put("/model")
+async def select_gemini_model(selection: ModelSelection) -> dict:
+    if not os.getenv("GEMINI_API_KEY", "").strip():
+        raise HTTPException(status_code=503, detail="Gemini is not configured. Set GEMINI_API_KEY on the backend.")
+    set_setting("gemini_model", selection.model)
+    return {"model": selection.model, "saved": True}
 
 
 @router.post("")
@@ -56,7 +71,9 @@ async def analyze_market(request: AnalysisRequest) -> dict:
         symbol = request.symbol.upper().replace("/", "").replace("-", "")
     technical = calculate_technical_analysis(candles)
     prompt = build_analysis_prompt(symbol, request.interval, candles, technical, request.question.strip())
-    model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+    model = get_setting("gemini_model", os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)).strip()
+    if model not in GEMINI_MODELS:
+        model = DEFAULT_GEMINI_MODEL
     url = f"{GEMINI_BASE_URL}/{model}:generateContent"
     payload = {"contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.25, "maxOutputTokens": 1800}}
     try:
