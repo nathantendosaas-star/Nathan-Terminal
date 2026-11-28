@@ -94,6 +94,8 @@ def setup_password(body:PasswordRequest):
     connection=_connect()
     try:
         connection.execute("BEGIN IMMEDIATE")
+        if using_postgres():
+            connection.execute("LOCK TABLE app_settings IN EXCLUSIVE MODE")
         existing=connection.execute("SELECT value FROM app_settings WHERE key='auth_password_hash'").fetchone()
         if os.getenv("APP_PASSWORD_HASH","").strip() or existing:raise HTTPException(status_code=409,detail="Password setup has already been completed.")
         encoded=hash_password(body.password);secret=secrets.token_urlsafe(48)
