@@ -7,9 +7,7 @@ the persisted session is ACTIVE and is torn down on stop/expiry.
 from __future__ import annotations
 
 import json
-import os
-import sqlite3
-from app.database import connect as _postgres_connect
+from app.database import connect as _postgres_connect, Connection, Row
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Literal
@@ -18,7 +16,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/v1/sessions", tags=["sessions"])
-DB_PATH = os.getenv("SESSION_DB_PATH", "data/sessions.sqlite3")
 MAX_SESSION_HOURS = 8
 DEFAULT_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "NVDA", "AAPL", "GOOGL"]
 SYMBOL_PROVIDERS = {
@@ -53,7 +50,7 @@ def _connect():
     return conn
 
 
-def _expire_active(conn: sqlite3.Connection, now: datetime) -> None:
+def _expire_active(conn: Connection, now: datetime) -> None:
     conn.execute(
         "UPDATE market_sessions SET status='EXPIRED', ended_at=? "
         "WHERE status='ACTIVE' AND expires_at<=?",
@@ -61,7 +58,7 @@ def _expire_active(conn: sqlite3.Connection, now: datetime) -> None:
     )
 
 
-def _serialize(row: sqlite3.Row | None) -> dict | None:
+def _serialize(row: Row | None) -> dict | None:
     if row is None:
         return None
     return {
